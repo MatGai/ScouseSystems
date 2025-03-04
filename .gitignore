@@ -1,0 +1,18 @@
+*.sdf
+# EDK-II/.vs/EDK-II/v14/.suo
+
+.vs/
+*.opensdf
+*.suo
+*.map
+x64/
+debugger/stderr.txt
+debugger/stdout.txt
+*.opendb
+/bootloader/.vs
+/kernel/.vs
+/bootloader/bootloader.VC.db
+/kernel/kernel.VC.db
+/bootloader/x64
+/kernel/x64
+/bootloader/bootloader.map

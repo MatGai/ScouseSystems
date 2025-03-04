@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.12.35527.113
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "bootloader", "bootloader\bootloader.vcxproj", "{389D817B-49FA-4302-8DA6-D1EA6C844E7D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		QemuDebug|x64 = QemuDebug|x64
+		QemuDebug|x86 = QemuDebug|x86
+		QemuRun|x64 = QemuRun|x64
+		QemuRun|x86 = QemuRun|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{389D817B-49FA-4302-8DA6-D1EA6C844E7D}.QemuDebug|x64.ActiveCfg = QemuDebug|x64
+		{389D817B-49FA-4302-8DA6-D1EA6C844E7D}.QemuDebug|x64.Build.0 = QemuDebug|x64
+		{389D817B-49FA-4302-8DA6-D1EA6C844E7D}.QemuDebug|x86.ActiveCfg = QemuDebug|Win32
+		{389D817B-49FA-4302-8DA6-D1EA6C844E7D}.QemuDebug|x86.Build.0 = QemuDebug|Win32
+		{389D817B-49FA-4302-8DA6-D1EA6C844E7D}.QemuRun|x64.ActiveCfg = QemuRun|x64
+		{389D817B-49FA-4302-8DA6-D1EA6C844E7D}.QemuRun|x64.Build.0 = QemuRun|x64
+		{389D817B-49FA-4302-8DA6-D1EA6C844E7D}.QemuRun|x86.ActiveCfg = QemuRun|Win32
+		{389D817B-49FA-4302-8DA6-D1EA6C844E7D}.QemuRun|x86.Build.0 = QemuRun|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

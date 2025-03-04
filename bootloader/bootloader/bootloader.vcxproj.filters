@@ -1,0 +1,57 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="boot">
+      <UniqueIdentifier>{c56f21a2-9694-4559-bff6-a28640fccb16}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source">
+      <UniqueIdentifier>{c934c8e5-8416-4642-858f-b52b1f41c218}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="util">
+      <UniqueIdentifier>{a551596d-17de-4098-9c9a-ff61b10e9fb9}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="UefiMain.c">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="boot.c">
+      <Filter>boot</Filter>
+    </ClCompile>
+    <ClCompile Include="filesystem.c">
+      <Filter>boot</Filter>
+    </ClCompile>
+    <ClCompile Include="image.c">
+      <Filter>boot</Filter>
+    </ClCompile>
+    <ClCompile Include="util.c">
+      <Filter>util</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="bdefs.h">
+      <Filter>boot</Filter>
+    </ClInclude>
+    <ClInclude Include="boot.h">
+      <Filter>boot</Filter>
+    </ClInclude>
+    <ClInclude Include="efi.h">
+      <Filter>boot</Filter>
+    </ClInclude>
+    <ClInclude Include="filesystem.h">
+      <Filter>boot</Filter>
+    </ClInclude>
+    <ClInclude Include="image.h">
+      <Filter>boot</Filter>
+    </ClInclude>
+    <ClInclude Include="status.h">
+      <Filter>boot</Filter>
+    </ClInclude>
+    <ClInclude Include="stdint.h">
+      <Filter>boot</Filter>
+    </ClInclude>
+    <ClInclude Include="util.h">
+      <Filter>util</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
