@@ -5,7 +5,10 @@
 *.opensdf
 *.suo
 *.map
+
 x64/
+!/bootloader/bootloader/edk2/MdePkg/Include/X64/
+
 debugger/stderr.txt
 debugger/stdout.txt
 *.opendb
