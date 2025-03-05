@@ -420,3 +420,67 @@ BlGetFileName(
     FreePool(FileInfo);
     return TRUE;
 }
+
+BOOLEAN
+BlGetFileInfo(
+    _In_ EFI_FILE_HANDLE FileHandle,
+    _Inout_ EFI_FILE_INFO** FileInfo
+)
+{
+    if (FileHandle == NULL || FileInfo == NULL)
+    {
+        FILE_SYSTEM_STATUS = EFI_INVALID_PARAMETER;
+
+        return FALSE;
+    }
+
+    //
+    // allocate for sizeof( EFI_FILE_INFO ) + padding for file name size
+    //
+    UINTN FileInfoInfoAllocSize = sizeof(EFI_FILE_INFO) + 1024;
+    EFI_STATUS Result = gBS->AllocatePool(EfiBootServicesData, FileInfoInfoAllocSize, FileInfo);
+    if (EFI_ERROR(Result))
+    {
+        FILE_SYSTEM_STATUS = Result;
+
+        return FALSE;
+    }
+
+    Result = FileHandle->GetInfo(FileHandle, &gEfiFileInfoGuid, &FileInfoInfoAllocSize, *FileInfo);
+    if (EFI_ERROR(Result))
+    {
+        //
+        // if somehow file name size was > 1024 re allocate and try again
+        //
+        if (Result == EFI_BUFFER_TOO_SMALL)
+        {
+            gBS->FreePool(*FileInfo);
+            Result = gBS->AllocatePool(EfiBootServicesData, FileInfoInfoAllocSize, FileInfo);
+            if (EFI_ERROR(Result))
+            {
+                FILE_SYSTEM_STATUS = Result;
+
+                return FALSE;
+            }
+
+            Result = FileHandle->GetInfo(FileHandle, &gEfiFileInfoGuid, &FileInfoInfoAllocSize, *FileInfo);
+
+            if (EFI_ERROR(Result))
+            {
+                FILE_SYSTEM_STATUS = Result;
+
+                gBS->FreePool(*FileInfo);
+
+                return FALSE;
+            }
+        }
+        else
+        {
+            FILE_SYSTEM_STATUS = Result;
+
+            return FALSE;
+        }
+    }
+
+    return TRUE;
+}

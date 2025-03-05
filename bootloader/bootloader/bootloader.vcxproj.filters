@@ -27,6 +27,7 @@
     <ClCompile Include="util.c">
       <Filter>util</Filter>
     </ClCompile>
+    <ClCompile Include="pe.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bdefs.h">
@@ -53,5 +54,6 @@
     <ClInclude Include="util.h">
       <Filter>util</Filter>
     </ClInclude>
+    <ClInclude Include="pe.h" />
   </ItemGroup>
 </Project>

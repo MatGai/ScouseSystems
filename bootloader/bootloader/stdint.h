@@ -4,6 +4,8 @@
 // standard types and defines
 //
 
+#include <Uefi/UefiBaseType.h>
+
 #define CONST const
 #define CONSTEXPR constexpr
 #define VOLATILE volatile

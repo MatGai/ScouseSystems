@@ -17,14 +17,3 @@
 typedef EFI_SYSTEM_TABLE* PEFI_SYSTEM_TABLE;
 typedef EFI_HANDLE* PEFI_HANDLE;
 typedef EFI_FILE_IO_INTERFACE* PEFI_FILE_IO_INTERFACE;
-typedef EFI_IMAGE_NT_HEADERS64 EFI_IMAGE_NT_HEADERS;
-
-#define EFI_IMAGE_FIRST_SECTION(ntheader) \
-    ( \
-      (EFI_IMAGE_SECTION_HEADER *) \
-        ( \
-          (UINT64) ntheader + \
-          offsetof (EFI_IMAGE_NT_HEADERS, OptionalHeader) + \
-          ((EFI_IMAGE_NT_HEADERS *) (ntheader))->FileHeader.SizeOfOptionalHeader \
-        ) \
-    )

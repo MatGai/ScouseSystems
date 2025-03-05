@@ -162,6 +162,20 @@ BlGetFileName(
     _Out_ CHAR16** Out
 );
 
+/**
+* Get EFI_FILE_INFO structure for the passed file. !!!RETURNS ALLOCATED MEMORY VIA FileInfo PARAMETER, UP TO THE CALLER TO FREE!!!
+* 
+* @param FileHandle Handle of the file to get the info for
+* @param FileInfo Pointer to an allocated instance of the EFI_FILE_INFO structure
+* 
+* @return TRUE on success, FALSE on error. Get error through BlGetLastFileError() if needed.
+*/
+BOOLEAN
+BlGetFileInfo(
+    _In_ EFI_FILE_HANDLE FileHandle,
+    _Inout_ EFI_FILE_INFO** FileInfo
+);
+
 //  ------------------------------ //
 //       NOT IMPLEMENTED YET       //
 //  ------------------------------ //
