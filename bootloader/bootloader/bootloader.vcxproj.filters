@@ -10,6 +10,12 @@
     <Filter Include="util">
       <UniqueIdentifier>{a551596d-17de-4098-9c9a-ff61b10e9fb9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="loader">
+      <UniqueIdentifier>{8f1e7ba5-d88a-4cec-ac51-a82100048f63}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="headers">
+      <UniqueIdentifier>{72b1ae7e-5da5-468c-81fc-bd63ce88ff0b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="UefiMain.c">
@@ -21,39 +27,43 @@
     <ClCompile Include="filesystem.c">
       <Filter>boot</Filter>
     </ClCompile>
-    <ClCompile Include="image.c">
-      <Filter>boot</Filter>
-    </ClCompile>
     <ClCompile Include="util.c">
       <Filter>util</Filter>
     </ClCompile>
-    <ClCompile Include="pe.c" />
+    <ClCompile Include="pe.c">
+      <Filter>loader</Filter>
+    </ClCompile>
+    <ClCompile Include="image.c">
+      <Filter>loader</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="bdefs.h">
-      <Filter>boot</Filter>
-    </ClInclude>
     <ClInclude Include="boot.h">
-      <Filter>boot</Filter>
-    </ClInclude>
-    <ClInclude Include="efi.h">
       <Filter>boot</Filter>
     </ClInclude>
     <ClInclude Include="filesystem.h">
       <Filter>boot</Filter>
     </ClInclude>
-    <ClInclude Include="image.h">
-      <Filter>boot</Filter>
-    </ClInclude>
-    <ClInclude Include="status.h">
-      <Filter>boot</Filter>
-    </ClInclude>
-    <ClInclude Include="stdint.h">
-      <Filter>boot</Filter>
-    </ClInclude>
     <ClInclude Include="util.h">
       <Filter>util</Filter>
     </ClInclude>
-    <ClInclude Include="pe.h" />
+    <ClInclude Include="pe.h">
+      <Filter>loader</Filter>
+    </ClInclude>
+    <ClInclude Include="image.h">
+      <Filter>loader</Filter>
+    </ClInclude>
+    <ClInclude Include="stdint.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="status.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="efi.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="bdefs.h">
+      <Filter>headers</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

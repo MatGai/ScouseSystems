@@ -4,6 +4,7 @@
 
 #include <IndustryStandard/PeImage.h>
 
+
 typedef EFI_IMAGE_DOS_HEADER* PEFI_IMAGE_DOS_HEADER;
 
 typedef EFI_IMAGE_NT_HEADERS64 EFI_IMAGE_NT_HEADERS;

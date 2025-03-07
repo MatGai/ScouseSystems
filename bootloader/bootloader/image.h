@@ -1,6 +1,9 @@
-#pragma once
+#ifndef IMAGE_H
+#define IMAGE_H
 
 #include "boot.h"
+#include <Library/BaseMemoryLib.h>
+#include "pe.h"
 
 typedef struct _BL_LDR_LOADED_IMAGE_INFO
 {
@@ -30,7 +33,21 @@ BLAPI
 BlLdrAllocatePEImagePages(
 	_In_ PBL_LDR_FILE_IMAGE FileImage,
 	_Inout_ PBYTE* ImagePages,
-	_Inout_ EFI_PHYSICAL_ADDRESS* ImagePagesPhysical
+	_Out_ EFI_PHYSICAL_ADDRESS** ImagePagesPhysical
+);
+
+BL_STATUS
+BLAPI
+BlLdrAlignFileImage(
+	_In_    PBL_LDR_FILE_IMAGE FileImage,
+	_Inout_ PBYTE Image
+);
+
+BL_STATUS
+BLAPI
+BlLdrImageRelocation(
+	_In_    PBL_LDR_FILE_IMAGE FileImage,
+	_Inout_ PBYTE Image
 );
 
 BL_STATUS
@@ -39,3 +56,6 @@ BlLdrLoadPEImage64(
 	_In_ CHAR8* ImagePath,
 	_Inout_ PBL_LDR_LOADED_IMAGE_INFO LoadedImageInfo
 );
+
+
+#endif // !IMAGE_H

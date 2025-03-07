@@ -1,4 +1,5 @@
 #include "filesystem.h"
+#include "image.h"
 
 CHAR8* gEfiCallerBaseName = "Scouse Systems";
 const UINT32 _gUefiDriverRevision = 0x0;
@@ -28,7 +29,18 @@ UefiMain(
     EFI_SYSTEM_TABLE* SystemTable
 )
 {
-     
+    EFI_LOADED_IMAGE* LoadedIamge = NULL;
+    EFI_STATUS err = gBS->HandleProtocol(ImageHandle, &gEfiLoadedImageProtocolGuid, &LoadedIamge);
+
+    if (EFI_ERROR(err))
+    {
+        Print(L"fucl\n");
+        return 0;
+    }
+
+    Print(L"handle-> %p", LoadedIamge->ImageBase);
+    __debugbreak();
+
     gST->ConOut->ClearScreen( gST->ConOut );
 
     EFI_TIME time;
@@ -55,62 +67,33 @@ UefiMain(
 
     getc();
 
-    Print(L"Looking for 'kernel.exe' file pointer\n");
+    Print(L"\nLooking for 'kernel.exe' file pointer\n");
     EFI_FILE_PROTOCOL* File = NULL;
     if (BlFindFile(L"kernel.exe", &File))
     {
         CHAR16* Buffer;
         if (BlGetFileName(File, &Buffer))
         {
-            Print(L"Got the file -> %s\n",Buffer);
+            Print(L"Got the file -> %s\n\n",Buffer);
         }
         FreePool(Buffer);
     }
 
     getc();
 
-    if (BlGetRootDirectoryByIndex(FS1, NULL))
-    {
-        BlListAllFiles();
-    }
-    else
-    {
-        if (EFI_ERROR(FILE_SYSTEM_STATUS))
-        {
-            Print(L"[ %r ] Failed to get root directory of current FS\n", BlGetLastFileError());
-        }
-    }
+    BlGetRootDirectory(NULL);
 
-    getc();
+    BL_LDR_LOADED_IMAGE_INFO FileInfo;
 
-    Print(L"Looking for 'kernel.exe' file pointer\n");
-    if (BlFindFile(L"kernel.exe", &File))
-    {
-        CHAR16* Buffer;
-        if (BlGetFileName(File, &Buffer))
-        {
-            Print(L"Got the file -> %s\n", Buffer);
-        }
-        FreePool(Buffer);
-    }
+    DEBUG_INFO(L"starting load kernel\n");
 
+    BlLdrLoadPEImage64(L"kernel.exe", &FileInfo);
 
-#ifdef _DEBUG_
-    Print(L"EFI System Table Info\r\n   Signature: 0x%lx\r\n   UEFI Revision: 0x%08x\r\n   Header Size: %u Bytes\r\n   CRC32: 0x%08x\r\n   Reserved: 0x%x\r\n", gST->Hdr.Signature, gST->Hdr.Revision, gST->Hdr.HeaderSize, gST->Hdr.CRC32, gST->Hdr.Reserved);
-#else
-    Print(L"EFI System Table Info\r\n   Signature: 0x%lx\r\n   UEFI Revision: %u.%u", gST->Hdr.Signature, gST->Hdr.Revision >> 16, (gST->Hdr.Revision & 0xFFFF) / 10);
-    if ((gST->Hdr.Revision & 0xFFFF) % 10)
-    {
-        Print(L".%u\r\n", (gST->Hdr.Revision & 0xFFFF) % 10); // UEFI major.minor version numbers are defined in BCD (in a 65535.65535 format) and are meant to be displayed as 2 digits if the minor ones digit is 0. Sub-minor revisions are included in the minor number. See the "EFI_TABLE_HEADER" section in any UEFI spec.
-        // The spec also states that minor versions are limited to a max of 99, even though they get to have a whole 16-bit number.
-    }
-    else
-    {
-        Print(L"\r\n");
-    }
-#endif
+    typedef int(__cdecl * KernelEntry)(EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL* ConOut);
+    KernelEntry EntryPoint = FileInfo.EntryPoint;
+    int ret = EntryPoint(gST->ConOut);
 
-    Print(L"   Firmware Vendor: %s\r\n   Firmware Revision: 0x%08x\r\n", gST->FirmwareVendor, gST->FirmwareRevision);
+    Print(L"EntryPoint returned %d\n", ret);
 
     getc();
 

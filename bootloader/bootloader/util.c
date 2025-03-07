@@ -107,10 +107,9 @@ strfmt(
         VA_END(Args);
         return FALSE;
     }
-
+    
     // try make the string
     StringLength = UnicodeVSPrint(Buffer, BufferSize * sizeof(CHAR16), Format, ArgsCopy);
-
 
 
     // If the printed length fits (CharCount < BufSize - 1), we're good
