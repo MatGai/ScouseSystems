@@ -10,6 +10,7 @@ PeIsValidImage(
 		return FALSE;
 	}
 
+
 	EFI_IMAGE_DOS_HEADER* Dos = (EFI_IMAGE_DOS_HEADER*)PE;
 	if (Dos->e_magic != EFI_IMAGE_DOS_SIGNATURE)
 	{
@@ -21,7 +22,7 @@ PeIsValidImage(
 	{
 		return FALSE;
 	}
-
+ 
 	if (NT->FileHeader.Machine != IMAGE_FILE_MACHINE_X64 && NT->OptionalHeader.Magic != EFI_IMAGE_NT_OPTIONAL_HDR64_MAGIC)
 	{
 		return FALSE;

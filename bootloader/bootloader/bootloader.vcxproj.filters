@@ -10,11 +10,20 @@
     <Filter Include="util">
       <UniqueIdentifier>{a551596d-17de-4098-9c9a-ff61b10e9fb9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="headers">
+      <UniqueIdentifier>{72b1ae7e-5da5-468c-81fc-bd63ce88ff0b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="paging">
+      <UniqueIdentifier>{4b9ccd3b-86ed-4e43-8a7f-f9a40431123b}</UniqueIdentifier>
+    </Filter>
     <Filter Include="loader">
       <UniqueIdentifier>{8f1e7ba5-d88a-4cec-ac51-a82100048f63}</UniqueIdentifier>
     </Filter>
-    <Filter Include="headers">
-      <UniqueIdentifier>{72b1ae7e-5da5-468c-81fc-bd63ce88ff0b}</UniqueIdentifier>
+    <Filter Include="registers">
+      <UniqueIdentifier>{903ff0f3-e63c-4396-8005-61f5f00fb633}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="registers\control">
+      <UniqueIdentifier>{5eca258b-aa28-491f-a53d-84cd1aaa955f}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -35,6 +44,9 @@
     </ClCompile>
     <ClCompile Include="image.c">
       <Filter>loader</Filter>
+    </ClCompile>
+    <ClCompile Include="registerutil.h">
+      <Filter>registers</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -65,5 +77,16 @@
     <ClInclude Include="bdefs.h">
       <Filter>headers</Filter>
     </ClInclude>
+    <ClInclude Include="pagemanager.h">
+      <Filter>paging</Filter>
+    </ClInclude>
+    <ClInclude Include="control.h">
+      <Filter>registers\control</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="asmcontrol.masm">
+      <Filter>registers\control</Filter>
+    </MASM>
   </ItemGroup>
 </Project>

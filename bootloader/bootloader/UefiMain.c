@@ -34,12 +34,11 @@ UefiMain(
 
     if (EFI_ERROR(err))
     {
-        Print(L"fucl\n");
         return 0;
     }
 
     Print(L"handle-> %p", LoadedIamge->ImageBase);
-    __debugbreak();
+    //__debugbreak();
 
     gST->ConOut->ClearScreen( gST->ConOut );
 

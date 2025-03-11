@@ -62,11 +62,29 @@ BlLdrAllocatePEImagePages(
 
 	PEFI_IMAGE_NT_HEADERS FileNtHeaders = EFI_IMAGE_NTHEADERS(FileImage->File);
 	ULONG64 Pages = EFI_SIZE_TO_PAGES( FileNtHeaders->OptionalHeader.SizeOfImage );
+	*ImagePagesPhysical = FileNtHeaders->OptionalHeader.ImageBase;
 
-	if (EFI_ERROR(gBS->AllocatePages(AllocateAnyPages, EfiBootServicesCode, Pages, ImagePagesPhysical)))
-	{
-		return BL_STATUS_GENERIC_ERROR;
-	}
+	//
+	// try to allocate at prefered base
+	//
+	gBS->AllocatePages(AllocateAnyPages/*AllocateAddress*/, EfiBootServicesCode, Pages, ImagePagesPhysical);
+	//EFI_STATUS PageError = gBS->AllocatePages(/*AllocateAnyPages*/AllocateAddress, EfiBootServicesCode, Pages, *ImagePagesPhysical);
+
+	//if (EFI_ERROR(PageError))
+	//{
+	//	if (PageError == EFI_NOT_FOUND)
+	//	{
+
+	//		//
+	//		// oh well, we can just fix relocations
+	//		//
+	//		gBS->AllocatePages(AllocateAnyPages/*AllocateAddress*/, EfiBootServicesCode, Pages, ImagePagesPhysical);
+	//	}
+	//	else
+	//	{
+	//		return BL_STATUS_GENERIC_ERROR;
+	//	}
+	//}
 
 	// not really needed...i hope...
 	//ZeroMem(
@@ -116,7 +134,7 @@ BlLdrLoadPEImage64(
 	}
 
 	PBYTE Image = NULL;
-	EFI_PHYSICAL_ADDRESS ImagePhysical;
+	EFI_PHYSICAL_ADDRESS ImagePhysical = NULL;
 	if (BL_ERROR(BlLdrAllocatePEImagePages(&FileImage, &Image, &ImagePhysical)))
 	{
 		return BL_STATUS_GENERIC_ERROR;
