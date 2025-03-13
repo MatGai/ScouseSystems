@@ -45,7 +45,7 @@
     <ClCompile Include="image.c">
       <Filter>loader</Filter>
     </ClCompile>
-    <ClCompile Include="registerutil.h">
+    <ClCompile Include="registers.h">
       <Filter>registers</Filter>
     </ClCompile>
   </ItemGroup>
@@ -85,7 +85,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <MASM Include="asmcontrol.masm">
+    <MASM Include="control.masm">
       <Filter>registers\control</Filter>
     </MASM>
   </ItemGroup>

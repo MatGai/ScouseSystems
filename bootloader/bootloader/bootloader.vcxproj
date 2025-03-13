@@ -221,10 +221,10 @@
     <ClCompile Include="filesystem.c" />
     <ClCompile Include="image.c" />
     <ClCompile Include="pe.c" />
-    <MASM Include="asmcontrol.masm">
+    <MASM Include="control.masm">
       <FileType>Document</FileType>
     </MASM>
-    <ClCompile Include="registerutil.h" />
+    <ClCompile Include="registers.h" />
     <ClCompile Include="UefiMain.c" />
     <ClCompile Include="util.c" />
   </ItemGroup>
