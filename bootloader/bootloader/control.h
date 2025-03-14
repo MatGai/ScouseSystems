@@ -80,41 +80,39 @@ typedef union _CR0_T
     struct
     {
         ULONG64 PROTECTED_MODE_ENABLE : 1;  // bit 1
-        ULONG64 MONITOR_COPROCESSOR : 1;    // bit 2
-        ULONG64 EMULATE_COPROCESSOR : 1;    // bit 3
-        ULONG64 TASK_SWITCHED : 1;          // bit 4
-        ULONG64 EXTENSION_TYPE : 1;         // bit 5
-        ULONG64 NUMERIC_ERROR : 1;          // bit 6
-        ULONG64 __reserved1 : 9;            // bits 6 : 15
-        ULONG64 WRITE_PROTECT : 1;          // bit 16
-        ULONG64 __reserved2 : 1;            // bit 17
-        ULONG64 ALIGNMENT_MASK : 1;         // bit 18
-        ULONG64 __reserved3 : 10;           // bits 19 : 28
-        ULONG64 NOT_WRITE_THROUGH : 1;      // bit 29
-        ULONG64 CACHE_DISABLE : 1;          // bit 30
-        ULONG64 PAGING : 1;                 // bit 31
-        ULONG64 __reserved4 : 32;           // bits 32 : 63
+        ULONG64 MONITOR_COPROCESSOR   : 1;    // bit 2
+        ULONG64 EMULATE_COPROCESSOR   : 1;    // bit 3
+        ULONG64 TASK_SWITCHED         : 1;          // bit 4
+        ULONG64 EXTENSION_TYPE        : 1;         // bit 5
+        ULONG64 NUMERIC_ERROR         : 1;          // bit 6
+        ULONG64 __reserved1           : 9;            // bits 6 : 15
+        ULONG64 WRITE_PROTECT         : 1;          // bit 16
+        ULONG64 __reserved2           : 1;            // bit 17
+        ULONG64 ALIGNMENT_MASK        : 1;         // bit 18
+        ULONG64 __reserved3           : 10;           // bits 19 : 28
+        ULONG64 NOT_WRITE_THROUGH     : 1;      // bit 29
+        ULONG64 CACHE_DISABLE         : 1;          // bit 30
+        ULONG64 PAGING                : 1;                 // bit 31
+        ULONG64 __reserved4           : 32;           // bits 32 : 63
     };
 } CR0_T, * PCR0_T;
 
-CR0_T
+ULONG64
 BLAPI
 ReadCR0(
 
 )
 {
-    CR0_T cr0 = { __readcr0() };
-    return cr0;
+    return __readcr0();
 }
 
 VOID
 BLAPI
 WriteCR0(
-    CR0_T cr0
+    ULONG64 Value
 )
 {
-    BIT_CLEAR(cr0.Value, CR0_CACHE_DISABLE);
-    __writecr0(cr0.Value);
+    __writecr0(Value);
 }
 
 //

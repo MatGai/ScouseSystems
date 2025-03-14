@@ -143,7 +143,7 @@ typedef struct _BL_EFI_MEMORY_MAP
     ULONG64 Key;
     ULONG64 DescriptorSize;
     UINT32  Version;
-} BL_EFI_MEMORY_MAP, * BL_EFI_MEMORY_MAP;
+} BL_EFI_MEMORY_MAP, * PBL_EFI_MEMORY_MAP;
 
 inline STATIC
 VOID

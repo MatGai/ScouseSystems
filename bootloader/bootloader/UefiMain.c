@@ -1,5 +1,6 @@
 #include "filesystem.h"
 #include "image.h"
+#include "pagemanager.h"
 
 CHAR8* gEfiCallerBaseName = "Scouse Systems";
 const UINT32 _gUefiDriverRevision = 0x0;
@@ -25,7 +26,7 @@ UefiUnload(
 EFI_STATUS 
 EFIAPI 
 UefiMain(
-    EFI_HANDLE ImageHandle, 
+    EFI_HANDLE ImageHandle,
     EFI_SYSTEM_TABLE* SystemTable
 )
 {
@@ -40,7 +41,7 @@ UefiMain(
     Print(L"handle-> %p", LoadedIamge->ImageBase);
     //__debugbreak();
 
-    gST->ConOut->ClearScreen( gST->ConOut );
+    gST->ConOut->ClearScreen(gST->ConOut);
 
     EFI_TIME time;
     gRT->GetTime(&time, NULL);
@@ -73,7 +74,7 @@ UefiMain(
         CHAR16* Buffer;
         if (BlGetFileName(File, &Buffer))
         {
-            Print(L"Got the file -> %s\n\n",Buffer);
+            Print(L"Got the file -> %s\n\n", Buffer);
         }
         FreePool(Buffer);
     }
@@ -88,13 +89,36 @@ UefiMain(
 
     BlLdrLoadPEImage64(L"kernel.exe", &FileInfo);
 
-    typedef int(__cdecl * KernelEntry)(EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL* ConOut);
+    typedef int(__cdecl* KernelEntry)(EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL* ConOut);
     KernelEntry EntryPoint = FileInfo.EntryPoint;
     int ret = EntryPoint(gST->ConOut);
 
     Print(L"EntryPoint returned %d\n", ret);
 
     getc();
+
+    BL_EFI_MEMORY_MAP SystemMemoryMap;
+
+    EFI_STATUS MemMap = gBS->GetMemoryMap(&SystemMemoryMap.MapSize, SystemMemoryMap.Descriptor, SystemMemoryMap.Key, SystemMemoryMap.DescriptorSize, SystemMemoryMap.Version);
+
+    if( EFI_ERROR( MemMap ))
+    {
+        getc();
+        DEBUG_ERROR(MemMap, L"Failed Memory Map");
+        return 1;
+    }
+
+    SystemMemoryMap.MapSize += 2 * SystemMemoryMap.DescriptorSize;
+    SystemMemoryMap.MapSize = AllocateZeroPool(SystemMemoryMap.MapSize);
+
+    MemMap = gBS->GetMemoryMap(&SystemMemoryMap.MapSize, SystemMemoryMap.Descriptor, &SystemMemoryMap.Key, &SystemMemoryMap.DescriptorSize, &SystemMemoryMap.Version);
+
+    if (EFI_ERROR(MemMap))
+    {
+        getc();
+        DEBUG_ERROR(MemMap, L"Failed Memory Map");
+        return 1;
+    }
 
     return EFI_SUCCESS;
 }
