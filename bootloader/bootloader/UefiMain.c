@@ -19,8 +19,10 @@ UefiUnload(
 
 /**
 * @brief The entry point for the UEFI application.
-* @param[in] EFI_HANDLE        - The image handle of the UEFI application
-* @param[in] EFI_SYSTEM_TABLE* - The system table of the UEFI application
+* 
+* @param[in] EFI_HANDLE        The image handle of the UEFI application
+* @param[in] EFI_SYSTEM_TABLE* The system table of the UEFI application
+* 
 * @return EFI_STATUS - The status of the UEFI application (useful if driver loads this app)
 */
 EFI_STATUS 
@@ -94,31 +96,141 @@ UefiMain(
     int ret = EntryPoint(gST->ConOut);
 
     Print(L"EntryPoint returned %d\n", ret);
-
+    Print(L"Kernel base %p\n", FileInfo.Base);
     getc();
 
-    BL_EFI_MEMORY_MAP SystemMemoryMap;
 
-    EFI_STATUS MemMap = gBS->GetMemoryMap(&SystemMemoryMap.MapSize, SystemMemoryMap.Descriptor, SystemMemoryMap.Key, SystemMemoryMap.DescriptorSize, SystemMemoryMap.Version);
+    //
+    // now we need to get details of memory, luckily efi provides this to us.
+    // with memory map we are able to get what physical memory is not in use.
+    // memory can be used by devices, firmware, etc.
+    //
+    BL_EFI_MEMORY_MAP SystemMemoryMap = { NULL };
 
-    if( EFI_ERROR( MemMap ))
-    {
+    // get size of memory map
+    EFI_STATUS MemMap = gBS->GetMemoryMap(&SystemMemoryMap.MapSize, &SystemMemoryMap.Descriptor, SystemMemoryMap.Key, SystemMemoryMap.DescriptorSize, SystemMemoryMap.Version);
+
+    if( MemMap != EFI_BUFFER_TOO_SMALL )
+    {   
+        DEBUG_ERROR(MemMap, L"Failed init Memory Map");
         getc();
-        DEBUG_ERROR(MemMap, L"Failed Memory Map");
         return 1;
     }
 
+    // allocate memory for memory map
     SystemMemoryMap.MapSize += 2 * SystemMemoryMap.DescriptorSize;
-    SystemMemoryMap.MapSize = AllocateZeroPool(SystemMemoryMap.MapSize);
+    SystemMemoryMap.Descriptor = AllocateZeroPool(SystemMemoryMap.MapSize);
 
+    // get memory map
     MemMap = gBS->GetMemoryMap(&SystemMemoryMap.MapSize, SystemMemoryMap.Descriptor, &SystemMemoryMap.Key, &SystemMemoryMap.DescriptorSize, &SystemMemoryMap.Version);
 
     if (EFI_ERROR(MemMap))
     {
+        DEBUG_ERROR(MemMap, L"Failed get Memory Map");
         getc();
-        DEBUG_ERROR(MemMap, L"Failed Memory Map");
         return 1;
     }
+
+    ULONG64 NumberOfDescriptors = SystemMemoryMap.MapSize / SystemMemoryMap.DescriptorSize;
+
+    ULONG64 MaxAddress = 0;
+
+    EFI_MEMORY_DESCRIPTOR* Desc = SystemMemoryMap.Descriptor;
+
+#define SsGetNextDescriptor( desc, size ) ( (EFI_MEMORY_DESCRIPTOR*)( ((UINT8*)(desc)) + size ) )
+
+    //
+    // we will get the highest memory address that is available to us
+    //
+    for (ULONG64 i = 0; i < NumberOfDescriptors; i++)
+    {
+        ULONG64 End = Desc->PhysicalStart + (Desc->NumberOfPages * DEFAULT_PAGE_SIZE);
+        if (End > MaxAddress)
+        {
+            MaxAddress = End;
+        }
+        Desc = SsGetNextDescriptor(Desc, SystemMemoryMap.DescriptorSize);
+    }
+
+    // number of physical pages
+    SsPfnCount = PHYSICAL_TO_PFN(MaxAddress);
+    
+    //
+    // allocate memory for PFN entries
+    //
+    ULONG64 PfnSize = SsPfnCount * sizeof( PFN_ENTRY );
+    ULONG64 PagesNeeded = (PfnSize + DEFAULT_PAGE_SIZE - 1) / DEFAULT_PAGE_SIZE;
+    ULONG64 PfnBase = 0;
+
+    EFI_STATUS PfnAlloc = gBS->AllocatePages( AllocateAnyPages, EfiBootServicesData, PagesNeeded, &PfnBase );
+
+    if (EFI_ERROR(PfnAlloc))
+    {
+        DEBUG_ERROR(PfnAlloc, L"Failed allocating pfn base\n");
+        getc();
+        return 0;
+    }
+
+    SsPfn = (PFN_ENTRY*)PfnBase;
+
+    // for now set all physical pages to reserved
+    for (ULONG64 pfn = 0; pfn < SsPfnCount; pfn++)
+    {
+        SsPfn[pfn].State = Reserved;
+        SsPfn[pfn].Ref = 0;
+        SsPfn[pfn].Offset = 0xffffff;
+    }
+
+    SsPfnFreeHead = 0xffffff;
+
+    Desc = SystemMemoryMap.Descriptor;
+
+    //
+    // iterate through memory map and set physical pages to free, that are free anyways.
+    //
+    for( ULONG64 i = 0; i < NumberOfDescriptors; i++ )
+    {
+        ULONG64 Start = Desc->PhysicalStart;
+        ULONG64 PageCount = Desc->NumberOfPages;
+        ULONG64 End = Start + PageCount * DEFAULT_PAGE_SIZE;
+
+        EFI_PAGE_SIZE;
+
+        switch (Desc->Type)
+        {
+            // realistically we do not care about firmware memory anymore.
+            case EfiConventionalMemory:
+            case EfiBootServicesCode:
+            case EfiBootServicesData:
+            case EfiPersistentMemory:
+            {
+                ULONG64 StartPFN = PHYSICAL_TO_PFN(Start);
+                ULONG64 EndPFN = PHYSICAL_TO_PFN(End);
+
+                for( ULONG64 PFN = StartPFN; PFN  < EndPFN; PFN++ )
+                {
+                    SsPfn[ PFN ].State = Free;
+                    SsPfn[ PFN ].Ref = 0;
+                    SsPfn[ PFN ].Offset = SsPfnFreeHead;
+                    SsPfnFreeHead = (ULONG64)PFN;
+                }
+                //Print(L"Free data to use by pfn!!!\n");
+                break;
+            }
+
+            default:
+            {
+                break;
+            }
+            
+        }
+        Desc = SsGetNextDescriptor( Desc, SystemMemoryMap.DescriptorSize );
+    }
+
+    Print(L"PFN free head -> %p\n", SsPfnFreeHead);
+    Print(L"PFN count -> %d\n", SsPfnCount);
+
+    getc();
 
     return EFI_SUCCESS;
 }

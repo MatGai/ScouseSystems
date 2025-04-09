@@ -142,7 +142,7 @@
       <EntryPointSymbol>KernelMain</EntryPointSymbol>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>false</DataExecutionPrevention>
-      <BaseAddress>0xFFFFFFFF80000000</BaseAddress>
+      <BaseAddress>0xFFFF800000000000</BaseAddress>
       <FixedBaseAddress>false</FixedBaseAddress>
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
       <OutputFile>..\..\$(Platform)\$(Configuration)\$(TargetName)$(TargetExt)</OutputFile>

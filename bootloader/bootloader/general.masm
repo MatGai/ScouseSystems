@@ -1,0 +1,66 @@
+
+PUBLIC __mfence
+PUBLIC __clflush
+PUBLIC __cpuid
+PUBLIC __tlbflush
+PUBLIC 
+
+.code
+
+
+__mfence PROC
+    mfence
+    ret
+__mfence ENDP
+
+__clflush PROC
+    clflush [rcx]
+    ret
+__clflush ENDP
+
+__cpuid PROC
+    mov rax, rcx
+    cpuid
+    ret
+__cpuid ENDP
+
+__tlbflush PROC
+    mov rax, rcx
+    invlpg [rax]
+    ret
+__tlbflush ENDP
+
+__readcr0 PROC
+    mov rax, cr0
+    ret
+__readcr0 ENDP
+
+__writecr0 PROC
+    mov rax, rcx
+    mov cr0, rax
+    ret
+__writecr0 ENDP
+
+__readcr3 PROC
+    mov rax, cr3
+    ret
+__readcr3 ENDP
+
+__writecr3 PROC
+    mov rax, rcx
+    mov cr3, rax
+    ret
+__writecr3 ENDP
+
+__readcr4 PROC
+    mov rax, cr4
+    ret
+__readcr4 ENDP
+
+__writecr4 PROC
+    mov rax, rcx
+    mov cr4, rax
+    ret
+__writecr4 ENDP
+
+END

@@ -234,12 +234,16 @@
     <ClInclude Include="control.h" />
     <ClInclude Include="efi.h" />
     <ClInclude Include="filesystem.h" />
+    <ClInclude Include="general.h" />
     <ClInclude Include="image.h" />
     <ClInclude Include="pagemanager.h" />
     <ClInclude Include="pe.h" />
     <ClInclude Include="status.h" />
     <ClInclude Include="stdint.h" />
     <ClInclude Include="util.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="general.masm" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
