@@ -4,6 +4,7 @@
 #include "boot.h"
 #include "pe.h"
 #include <Library/BaseMemoryLib.h>
+#include "general.h"
 
 typedef union _VIRT_ADDR_T
 {
@@ -172,8 +173,6 @@ const ULONG64 FLAG_USER = 1ULL << 2;  // keep this 0 for kernel
 const ULONG64 FLAG_PS = 1ULL << 7;    // page size (for PD/PT entries)
 const ULONG64 FLAG_NX = 1ULL << 63;   // No-execute (bit 63)
 
-#define PAGESIZE 4096
-
 typedef struct _BL_EFI_MEMORY_MAP
 {
     EFI_MEMORY_DESCRIPTOR* Descriptor;
@@ -182,7 +181,6 @@ typedef struct _BL_EFI_MEMORY_MAP
     ULONG64 DescriptorSize;
     UINT32  Version;
 } BL_EFI_MEMORY_MAP, * PBL_EFI_MEMORY_MAP;
-
 
 /**
 * Converst a physical address to a virtual address that
@@ -195,70 +193,8 @@ PhysicalToVirtual(
     _In_ ULONG64 PhysicalAddress
 )
 {
-    DEBUG_ASSERT(PhysicalAddress, NULL, "Expected valid paramter");
+    DBG_ASSERT(PhysicalAddress, NULL, "Expected valid paramter");
     return (VOID*)(DIRECT_MAP_BASE + PhysicalAddress);
-}
-
-inline STATIC
-VOID
-BLAPI
-BlIntialisePageManager(
-    VOID
-)
-{
-    STATIC BOOLEAN Initalised = FALSE;
-
-    if (!Initalised)
-    {
-        //
-        // allocate a page for each paging structure
-        //
-        gBS->AllocatePages(AllocateAnyPages, EfiLoaderData, 1, &__pml4);
-        gBS->AllocatePages(AllocateAnyPages, EfiLoaderData, 1, &__pdpt);
-        gBS->AllocatePages(AllocateAnyPages, EfiLoaderData, 1, &__pd);
-        gBS->AllocatePages(AllocateAnyPages, EfiLoaderData, 1, &__pt);
-
-        pml4 = (ULONG64*)(UINTN)__pml4;
-        pdpt = (ULONG64*)(UINTN)__pdpt;
-        pd = (ULONG64*)(UINTN)__pd;
-        pt = (ULONG64*)(UINTN)__pt;
-
-        sizeof(UINT32);
-        //
-        // Zero out all pages
-        //
-        ZeroMem(pml4, 4096);
-        ZeroMem(pdpt, 4096);
-        ZeroMem(pd, 4096);
-        ZeroMem(pt, 4096);
-
-        pml4[511] = (__pdpt & 0xFFFFFFFFFFFFF000ULL) | (FLAG_PRESENT | FLAG_RW);         // PML4 entry for high-half
-        pdpt[510] = (__pd & 0xFFFFFFFFFFFFF000ULL) | (FLAG_PRESENT | FLAG_RW);
-        pd[0] = (__pt & 0xFFFFFFFFFFFFF000ULL) | (FLAG_PRESENT | FLAG_RW);
-
-        Initalised = TRUE;
-    }
-}
-
-inline STATIC
-VOID
-BLAPI
-BlMapKernelPages(
-    _In_ ULONG64 Image
-)
-{
-    if (PeIsValidImage((PBYTE)Image))
-    {
-        return;
-    }
-
-    EFI_IMAGE_NT_HEADERS* ImageNtHeaders = EFI_IMAGE_NTHEADERS(Image);
-
-    for (ULONG i = 0; i < ImageNtHeaders->OptionalHeader.SizeOfImage / 4096; ++i)
-    {
-        ULONG64 PhysicalPage = Image + i * 4096ull;
-        pt[i] = (PhysicalPage & 0xFFFFFFFFFFFFF000ULL) | (FLAG_PRESENT | FLAG_RW);
-    }
 }
 
 
@@ -270,7 +206,7 @@ SsGetFreePhysicalPage(
 {
     if (SsPfnFreeHead == 0xffffff)
     {
-        DEBUG_INFO(L"No Free memory!");
+        DBG_INFO(L"No Free memory!");
         getc();
         return 0;
     }
@@ -300,7 +236,7 @@ SsFreePhysicalPage(
 
     if(IndexPFN >= SsPfnCount );
     {
-        DEBUG_INFO( L"Pfn too large\n" );
+        DBG_INFO( L"Pfn too large\n" );
         getc();
         return;
     }
@@ -325,7 +261,7 @@ SsPagingInit(
 
     if (!FreePage)
     {
-        DEBUG_INFO(L"No free memory!");
+        DBG_INFO(L"No free memory!");
         getc();
         return;
     }
@@ -339,56 +275,81 @@ SsPagingInit(
 // maps to physical address 'paddr' with the specified 'flags' (for the PTE).
 // This function walks the 4-level page table hierarchy, allocating lower-level tables on demand.
 // It uses our global gPML4 (which is assumed to be already initialized).
-EFI_STATUS MapPage(UINT64 vaddr, UINT64 paddr, UINT64 flags)
+EFI_STATUS 
+MapPage(
+    ULONG64 vaddr, 
+    ULONG64 paddr, 
+    ULONG64 flags
+)
 {
     // Decompose vaddr into indices:
-    UINT64 pml4_index = (vaddr >> 39) & 0x1FF;
-    UINT64 pdpt_index = (vaddr >> 30) & 0x1FF;
-    UINT64 pd_index = (vaddr >> 21) & 0x1FF;
-    UINT64 pt_index = (vaddr >> 12) & 0x1FF;
+    //UINT64 pml4_index = (vaddr >> 39) & 0x1FF;
+    //UINT64 pdpt_index = (vaddr >> 30) & 0x1FF;
+    //UINT64 pd_index = (vaddr >> 21) & 0x1FF;
+    //UINT64 pt_index = (vaddr >> 12) & 0x1FF;
 
-    // Get or allocate the PDPT.
-    PPML4E pml4e = ((PPML4E)&gPML4[pml4_index]);
-    UINT64 pdptPhys;
-    PPDPTE pdptTable;
-    if (!(pml4e->Present)) {
-        EFI_STATUS Status = AllocatePage(&pdptPhys);
-        if (EFI_ERROR(Status))
-            return Status;
-        ZeroMem(PhysicalToVirtual(pdptPhys), DEFAULT_PAGE_SIZE);
-        pml4e->Value = (pdptPhys & 0xFFFFFFFFFFFFF000ULL) | FLAG_PRESENT | FLAG_RW;
+    PVIRT_ADDR_T VirtualAddress = { (PVOID)vaddr };
+
+    PPML4E Pml4e = ((PPML4E)&gPML4[VirtualAddress->Plm4Index]);
+    PPDPTE PdptTable;
+    if (!(Pml4e->Present)) 
+    {
+        ULONG64 PdptPhysical = SsGetFreePhysicalPage();
+        if (!PdptPhysical)
+        {
+            return EFI_OUT_OF_RESOURCES;
+        }
+
+        PVOID PdptVirtual = PhysicalToVirtual(PdptPhysical);
+        ZeroMem((PVOID)PdptVirtual, DEFAULT_PAGE_SIZE);
+
+        Pml4e->Value = (PdptPhysical & 0xFFFFFFFFFFFFF000ULL) | FLAG_PRESENT | FLAG_RW;
+
+        tlbflush(PdptVirtual);
+        mfence();
     }
-    pdptTable = (PPDPTE)PhysicalToVirtual(pml4e->Pfn << PAGE_SHIFT);
+    PdptTable = (PPDPTE)PhysicalToVirtual(Pml4e->Pfn << PAGE_SHIFT);
 
-    // Get or allocate the PD.
-    PPDPTE pdpe = &pdptTable[pdpt_index];
-    UINT64 pdPhys;
-    PPDE pdTable;
-    if (!(pdpe->Present)) {
-        EFI_STATUS Status = AllocatePage(&pdPhys);
-        if (EFI_ERROR(Status))
-            return Status;
-        ZeroMem(PhysicalToVirtual(pdPhys), DEFAULT_PAGE_SIZE);
-        pdpe->Value = (pdPhys & 0xFFFFFFFFFFFFF000ULL) | FLAG_PRESENT | FLAG_RW;
+    PPDPTE Pdpe = &PdptTable[VirtualAddress->PdptIndex];
+    PPDE PdTable;
+    if (!(Pdpe->Present)) 
+    {
+        ULONG64 PdPhysical = SsGetFreePhysicalPage();
+        if (!PdPhysical)
+        {
+            return EFI_OUT_OF_RESOURCES;
+        }
+        PVOID PdVirtual = PhysicalToVirtual(PdPhysical);
+        ZeroMem(PdVirtual, DEFAULT_PAGE_SIZE);
+
+        Pdpe->Value = (PdPhysical & 0xFFFFFFFFFFFFF000ULL) | FLAG_PRESENT | FLAG_RW;
+
+        tlbflush(PdVirtual);
+        mfence();
     }
-    pdTable = (PPDE)PhysicalToVirtual(pdpe->Pfn << PAGE_SHIFT);
+    PdTable = (PPDE)PhysicalToVirtual(Pdpe->Pfn << PAGE_SHIFT);
 
-    // Get or allocate the PT.
-    PPDE pde = &pdTable[pd_index];
-    UINT64 ptPhys;
-    PPTE ptTable;
-    if (!(pde->Present)) {
-        EFI_STATUS Status = AllocatePage(&ptPhys);
-        if (EFI_ERROR(Status))
-            return Status;
-        ZeroMem(PhysicalToVirtual(ptPhys), DEFAULT_PAGE_SIZE);
-        pde->Value = (ptPhys & 0xFFFFFFFFFFFFF000ULL) | FLAG_PRESENT | FLAG_RW;
+    PPDE Pde = &PdTable[VirtualAddress->PdIndex];
+    PPTE PtTable;
+    if (!(Pde->Present)) 
+    {
+        ULONG64 PtPhysical = SsGetFreePhysicalPage();
+        if (!PtPhysical)
+        {
+            return EFI_OUT_OF_RESOURCES;
+        }
+        PVOID PtVirtual = PhysicalToVirtual(PtPhysical);
+        ZeroMem(PtVirtual, DEFAULT_PAGE_SIZE);
+
+        Pde->Value = (PtPhysical & 0xFFFFFFFFFFFFF000ULL) | FLAG_PRESENT | FLAG_RW;
+
+        tlbflush(PtVirtual);
+        mfence();
     }
-    ptTable = (PPTE)PhysicalToVirtual(pde->Pfn << PAGE_SHIFT);
+    PtTable = (PPTE)PhysicalToVirtual(Pde->Pfn << PAGE_SHIFT);
 
-    // Finally, install the PTE for the requested mapping.
-    PPTE pte = &ptTable[pt_index];
-    pte->Value = (paddr & 0xFFFFFFFFFFFFF000ULL) | flags;
+    PPTE Pte = &PtTable[VirtualAddress->PtIndex];
+    Pte->Value = (paddr & 0xFFFFFFFFFFFFF000ULL) | flags;
     return EFI_SUCCESS;
 }
 
@@ -409,7 +370,7 @@ EFI_STATUS DirectMapRange(UINT64 physStart, UINT64 physEnd)
             return Status;
         }
     }
-    ReloadCR3(); // Flush the TLB
+    //ReloadCR3(); // Flush the TLB
     return EFI_SUCCESS;
 }
 

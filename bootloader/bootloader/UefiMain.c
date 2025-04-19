@@ -71,7 +71,7 @@ UefiMain(
 
     Print(L"\nLooking for 'kernel.exe' file pointer\n");
     EFI_FILE_PROTOCOL* File = NULL;
-    if (BlFindFile(L"kernel.exe", &File))
+    if (BlFindFile("kernel.exe", &File))
     {
         CHAR16* Buffer;
         if (BlGetFileName(File, &Buffer))
@@ -87,12 +87,12 @@ UefiMain(
 
     BL_LDR_LOADED_IMAGE_INFO FileInfo;
 
-    DEBUG_INFO(L"starting load kernel\n");
+    DBG_INFO(L"starting load kernel\n");
 
-    BlLdrLoadPEImage64(L"kernel.exe", &FileInfo);
+    BlLdrLoadPEImage64("kernel.exe", &FileInfo);
 
     typedef int(__cdecl* KernelEntry)(EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL* ConOut);
-    KernelEntry EntryPoint = FileInfo.EntryPoint;
+    KernelEntry EntryPoint = (KernelEntry)FileInfo.EntryPoint;
     int ret = EntryPoint(gST->ConOut);
 
     Print(L"EntryPoint returned %d\n", ret);
@@ -108,11 +108,11 @@ UefiMain(
     BL_EFI_MEMORY_MAP SystemMemoryMap = { NULL };
 
     // get size of memory map
-    EFI_STATUS MemMap = gBS->GetMemoryMap(&SystemMemoryMap.MapSize, &SystemMemoryMap.Descriptor, SystemMemoryMap.Key, SystemMemoryMap.DescriptorSize, SystemMemoryMap.Version);
+    EFI_STATUS MemMap = gBS->GetMemoryMap(&SystemMemoryMap.MapSize, SystemMemoryMap.Descriptor, &SystemMemoryMap.Key, &SystemMemoryMap.DescriptorSize, &SystemMemoryMap.Version);
 
     if( MemMap != EFI_BUFFER_TOO_SMALL )
     {   
-        DEBUG_ERROR(MemMap, L"Failed init Memory Map");
+        DBG_ERROR(MemMap, L"Failed init Memory Map");
         getc();
         return 1;
     }
@@ -126,7 +126,7 @@ UefiMain(
 
     if (EFI_ERROR(MemMap))
     {
-        DEBUG_ERROR(MemMap, L"Failed get Memory Map");
+        DBG_ERROR(MemMap, L"Failed get Memory Map");
         getc();
         return 1;
     }
@@ -166,7 +166,7 @@ UefiMain(
 
     if (EFI_ERROR(PfnAlloc))
     {
-        DEBUG_ERROR(PfnAlloc, L"Failed allocating pfn base\n");
+        DBG_ERROR(PfnAlloc, L"Failed allocating pfn base\n");
         getc();
         return 0;
     }
@@ -194,8 +194,6 @@ UefiMain(
         ULONG64 PageCount = Desc->NumberOfPages;
         ULONG64 End = Start + PageCount * DEFAULT_PAGE_SIZE;
 
-        EFI_PAGE_SIZE;
-
         switch (Desc->Type)
         {
             // realistically we do not care about firmware memory anymore.
@@ -211,7 +209,7 @@ UefiMain(
                 {
                     SsPfn[ PFN ].State = Free;
                     SsPfn[ PFN ].Ref = 0;
-                    SsPfn[ PFN ].Offset = SsPfnFreeHead;
+                    SsPfn[ PFN ].Offset = (UINT32)SsPfnFreeHead;
                     SsPfnFreeHead = (ULONG64)PFN;
                 }
                 //Print(L"Free data to use by pfn!!!\n");

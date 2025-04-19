@@ -9,12 +9,12 @@ extern "C"
 #endif
 
     VOID
-    __tlbflush(
+    tlbflush(
         VOID* adr
     );
 
     VOID 
-    __mfence(
+    mfence(
         VOID
     );
 

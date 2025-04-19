@@ -26,51 +26,42 @@ typedef LONG BL_STATUS;
 #define BL_WARNING( Status ) ( ((Status) & 0xF0000000) == BL_STATUS_WARNING_BASE )
 #define BL_ERROR( Status ) ( ((Status) & 0xF0000000) == BL_STATUS_ERROR_BASE )
 
-
-
 #ifdef _DEBUG
 
-#undef DEBUG_ERROR
-#undef DEBUG_INFO
+#define PRINT_DEBUG_INTERNAL(Level, Message, ...)                                \
+    do {                                                                         \
+        CHAR16 WideFunction[256];                                                \
+        AsciiToUnicode(__func__, WideFunction,                                   \
+                       sizeof(WideFunction) / sizeof(CHAR16));                   \
+        Print(L"[ %s ] %s:%d: " Message, Level, WideFunction,                    \
+              __LINE__, ##__VA_ARGS__);                                          \
+    } while (0)
 
-#define __PRINT_DEBUG( Level, Message, ... )                                                   \
-  do {                                                                                         \
-        CHAR16 WideFunction[256];                                                              \
-        AsciiToUnicode(__FUNCTION__, WideFunction, sizeof(WideFunction)/sizeof(CHAR16));       \
-        Print(L"[ %s ] %s:%d: " Message, Level, WideFunction, __LINE__, ##__VA_ARGS__);  \
-  } while(0)                                                                                   
+#define DBG_INFO(Message, ...)   PRINT_DEBUG_INTERNAL(L"Info",   Message, ##__VA_ARGS__)
+#define DBG_ERROR(Status, Message, ...)  PRINT_DEBUG_INTERNAL(Status, Message, ##__VA_ARGS__)
 
-#define DEBUG_INFO(Message, ...)                         \
-  do {                                                   \
-        __PRINT_DEBUG( L"Info", Message, ##__VA_ARGS__ );  \
-  } while(0)
+#define DBG_ASSERT(Expression, Return, Message, ...)                           \
+    do {                                                                         \
+        if (!(Expression))                                                       \
+        {                                                                        \
+            PRINT_DEBUG_INTERNAL(L"Assert", Message, ##__VA_ARGS__);             \
+            return (Return);                                                     \
+        }                                                                        \
+    } while (0)
 
-#define DEBUG_ERROR(Status, Message, ...)                \
-  do {                                                   \
-        __PRINT_DEBUG(  Status, Message, ##__VA_ARGS__ );  \
-  } while(0)
+#else   /* !_DEBUG */
 
- #define DEBUG_ASSERT( Expression, Return, Message, ... )       \
-    do {                                                        \
-        if ( !(Expression) )                                    \
-        {                                                       \
-            __PRINT_DEBUG( L"Assert", Message, ##__VA_ARGS__ ); \
-            return Return;                                      \
-        }                                                       \
-    } while(0)
-    
+#define DEBUG_INFO(...)   ((void)0)
+#define DEBUG_ERROR(...)  ((void)0)
+#define DEBUG_ASSERT(Expression, Return, ...)                                    \
+    do {                                                                         \
+        if (!(Expression)) {                                                     \
+            return (Return);                                                     \
+        }                                                                        \
+    } while (0)
 
-#else
-    #define DEBUG_INFO(...) ((VOID)0)
-    #define DEBUG_ERROR(...) ((VOID)0)
-    #define DEBUG_ASSERT( Expression, Return, Message, ... ) \
-        if ( !(Expression) )  \
-        {   \
-            return Return;  \
-        }   \
-#endif
+#endif /* _DEBUG */
 
-#endif // ! STATUS_H
 #endif // ! STATUS_H
 
 

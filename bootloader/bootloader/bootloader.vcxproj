@@ -146,7 +146,7 @@
       <SupportJustMyCode>true</SupportJustMyCode>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
-      <CompileAs>Default</CompileAs>
+      <CompileAs>CompileAsC</CompileAs>
     </ClCompile>
     <Link>
       <SubSystem>EFI Application</SubSystem>

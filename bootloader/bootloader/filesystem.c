@@ -11,7 +11,7 @@ BlInitFileSystem(
 
     if( EFI_ERROR( FILE_SYSTEM_STATUS ) )
     {
-        DEBUG_ERROR(FILE_SYSTEM_STATUS, L"Failed to get loaded image protocol");
+        DBG_ERROR(FILE_SYSTEM_STATUS, L"Failed to get loaded image protocol");
         return FALSE;
     }
 
@@ -26,7 +26,7 @@ BlGetRootDirectory(
 {
     if (!LoadedImage)
     {
-        DEBUG_ERROR(BlGetLastFileError(), L"Loaded image was null, maybe failed to get it ? ",  );
+        DBG_ERROR(BlGetLastFileError(), L"Loaded image was null, maybe failed to get it ? ",  );
         return FALSE;
     }
 
@@ -35,7 +35,7 @@ BlGetRootDirectory(
 
     if ( EFI_ERROR( FILE_SYSTEM_STATUS ) )
     {
-        DEBUG_ERROR(FILE_SYSTEM_STATUS, L"Could not get file protocol" );
+        DBG_ERROR(FILE_SYSTEM_STATUS, L"Could not get file protocol" );
         return FALSE;
     }
 
@@ -44,7 +44,7 @@ BlGetRootDirectory(
 
     if( EFI_ERROR( FILE_SYSTEM_STATUS )  )
     {
-        DEBUG_ERROR(FILE_SYSTEM_STATUS, L"Could not open the root directory");
+        DBG_ERROR(FILE_SYSTEM_STATUS, L"Could not open the root directory");
         return FALSE;
     }
 
@@ -141,7 +141,7 @@ BlOpenSubDirectory(
     // this is not a directory!
     if (FILE_SYSTEM_STATUS != EFI_FILE_DIRECTORY)
     {
-        DEBUG_ERROR(FILE_SYSTEM_STATUS, L"Passed in path '%s' is not a directory to open!!!!", Path );
+        DBG_ERROR(FILE_SYSTEM_STATUS, L"Passed in path '%s' is not a directory to open!!!!", Path );
         FILE_SYSTEM_STATUS = EFI_INVALID_PARAMETER;
         return FALSE;
     }
@@ -157,7 +157,7 @@ BlOpenSubDirectory(
     
     if( EFI_ERROR( FILE_SYSTEM_STATUS ) )
     {
-        DEBUG_ERROR(FILE_SYSTEM_STATUS, L"Failed to open '%s' as directory", Path);
+        DBG_ERROR(FILE_SYSTEM_STATUS, L"Failed to open '%s' as directory", Path);
         return FALSE;
     }
 
@@ -201,7 +201,7 @@ BlFindFile(
 
     if (EFI_ERROR(FILE_SYSTEM_STATUS))
     {
-        DEBUG_ERROR(FILE_SYSTEM_STATUS, L"Failed to open file '%s'\n", File );
+        DBG_ERROR(FILE_SYSTEM_STATUS, L"Failed to open file '%s'\n", File );
         return FALSE;
     }
 
@@ -225,7 +225,7 @@ BlListDirectoryRecursive(
     FILE_SYSTEM_STATUS = Directory->SetPosition(Directory, 0);
     if (EFI_ERROR(FILE_SYSTEM_STATUS)) 
     {
-        DEBUG_ERROR(L"Failed to SetPosition on directory\n");
+        DBG_ERROR(L"Failed to SetPosition on directory\n");
         return FALSE;
     }
 
@@ -246,7 +246,7 @@ BlListDirectoryRecursive(
         FILE_SYSTEM_STATUS = Directory->Read(Directory, &Size, FileInfo);
         if (EFI_ERROR(FILE_SYSTEM_STATUS))
         {
-            DEBUG_ERROR(FILE_SYSTEM_STATUS, L"Failed to read directory 's'\n", FileInfo->FileName);
+            DBG_ERROR(FILE_SYSTEM_STATUS, L"Failed to read directory 's'\n", FileInfo->FileName);
             FreePool(FileInfo);
             return FALSE;
         }
@@ -287,7 +287,7 @@ BlListDirectoryRecursive(
 
             if (EFI_ERROR(FILE_SYSTEM_STATUS) && !SubDirectory)
             {
-                DEBUG_ERROR(FILE_SYSTEM_STATUS, L"Cannot open subdirectory %s\n", FileInfo->FileName);
+                DBG_ERROR(FILE_SYSTEM_STATUS, L"Cannot open subdirectory %s\n", FileInfo->FileName);
                 FreePool(FileInfo);
                 return FALSE;
             }
@@ -359,7 +359,7 @@ BlSetWorkingDirectory(
         {
             if (EFI_ERROR(FILE_SYSTEM_STATUS))
             {
-                DEBUG_ERROR(FILE_SYSTEM_STATUS, L"Failed to get root directory of fs0\n");
+                DBG_ERROR(FILE_SYSTEM_STATUS, L"Failed to get root directory of fs0\n");
                 return FALSE;
             }
         }
@@ -376,7 +376,7 @@ BlSetWorkingDirectory(
             return TRUE;
         }
  
-        DEBUG_ERROR(FILE_SYSTEM_STATUS, L"Failed to get new directory '%s'\n", Directory );
+        DBG_ERROR(FILE_SYSTEM_STATUS, L"Failed to get new directory '%s'\n", Directory );
     }
 
     return FALSE;

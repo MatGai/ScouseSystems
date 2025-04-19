@@ -68,7 +68,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #define EFI_D_FS        DEBUG_FS
 #define EFI_D_POOL      DEBUG_POOL
 #define EFI_D_PAGE      DEBUG_PAGE
-#define EFI_D_INFO      DEBUG_INFO
+#define EFI_D_INFO      DBG_INFO
 #define EFI_D_DISPATCH  DEBUG_DISPATCH
 #define EFI_D_VARIABLE  DEBUG_VARIABLE
 #define EFI_D_BM        DEBUG_BM
@@ -78,7 +78,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #define EFI_D_LOADFILE  DEBUG_LOADFILE
 #define EFI_D_EVENT     DEBUG_EVENT
 #define EFI_D_VERBOSE   DEBUG_VERBOSE
-#define EFI_D_ERROR     DEBUG_ERROR
+#define EFI_D_ERROR     DBG_ERROR
 
 //
 // Source file line number.
@@ -463,7 +463,7 @@ UnitTestDebugAssert (
     do {                                                                                 \
       if (DebugAssertEnabled ()) {                                                       \
         if (EFI_ERROR (StatusParameter)) {                                               \
-          DEBUG ((DEBUG_ERROR, "\nASSERT_EFI_ERROR (Status = %r)\n", StatusParameter));  \
+          DEBUG ((DBG_ERROR, "\nASSERT_EFI_ERROR (Status = %r)\n", StatusParameter));  \
           _ASSERT (!EFI_ERROR (StatusParameter));                                        \
         }                                                                                \
       }                                                                                  \
@@ -494,7 +494,7 @@ UnitTestDebugAssert (
     do {                                                                \
       if (DebugAssertEnabled ()) {                                      \
         if (RETURN_ERROR (StatusParameter)) {                           \
-          DEBUG ((DEBUG_ERROR, "\nASSERT_RETURN_ERROR (Status = %r)\n", \
+          DEBUG ((DBG_ERROR, "\nASSERT_RETURN_ERROR (Status = %r)\n", \
             StatusParameter));                                          \
           _ASSERT (!RETURN_ERROR (StatusParameter));                    \
         }                                                               \
