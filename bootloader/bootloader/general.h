@@ -9,12 +9,12 @@ extern "C"
 #endif
 
     VOID
-    tlbflush(
+    _tlbflush(
         VOID* adr
     );
 
     VOID 
-    mfence(
+    _mfence(
         VOID
     );
 
@@ -22,6 +22,12 @@ extern "C"
 }
 #endif
 
+//
+// Function prototypes for assembly functions, as the function definitions are reserved in masm
+//
+
+#define tlbflush(adr) _tlbflush((VOID*)(adr))
+#define mfence() _mfence()
 
 #endif // GENERAL_H
 

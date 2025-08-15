@@ -183,7 +183,7 @@ typedef struct _BL_EFI_MEMORY_MAP
 } BL_EFI_MEMORY_MAP, * PBL_EFI_MEMORY_MAP;
 
 /**
-* Converst a physical address to a virtual address that
+* Converst a physical address to a virtual address 
 */
 STATIC 
 __forceinline
@@ -356,7 +356,10 @@ MapPage(
 // DirectMapRange maps all physical memory from physStart to physEnd
 // into the direct mapped region so that VA = DIRECT_MAP_BASE + PA.
 // The caller must ensure that physStart and physEnd are page-aligned.
-EFI_STATUS DirectMapRange(UINT64 physStart, UINT64 physEnd)
+EFI_STATUS DirectMapRange(
+    UINT64 physStart, 
+    UINT64 physEnd
+)
 {
     if ((physStart % DEFAULT_PAGE_SIZE) || (physEnd % DEFAULT_PAGE_SIZE))
         return EFI_INVALID_PARAMETER;

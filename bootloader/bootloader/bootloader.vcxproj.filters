@@ -94,10 +94,8 @@
     <MASM Include="control.masm">
       <Filter>registers\control</Filter>
     </MASM>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="general.masm">
+    <MASM Include="general.masm">
       <Filter>registers\general</Filter>
-    </None>
+    </MASM>
   </ItemGroup>
 </Project>

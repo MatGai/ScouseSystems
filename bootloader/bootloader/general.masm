@@ -1,3 +1,4 @@
+; general.asm    
 
 ; ########################################
 ; #
@@ -5,12 +6,14 @@
 ; #
 ; #######################################
 
-PUBLIC mfence
-PUBLIC clflush
-PUBLIC cpuid
-PUBLIC tlbflush
 
 .code
+
+PUBLIC _mfence
+PUBLIC _clflush
+;PUBLIC _cpuid
+PUBLIC _tlbflush
+
 
 ; ########################################
 ; #
@@ -20,7 +23,7 @@ PUBLIC tlbflush
 
 
 ;
-; Function: void mfence ( void )
+; Function: void _mfence ( void )
 ;
 ; Description: This function is used to ensure that all memory operations 
 ;              are completed before any subsequent memory operations are
@@ -32,16 +35,16 @@ PUBLIC tlbflush
 ;
 ; Returns:     None
 ;
-mfence PROC
+_mfence PROC
 
     mfence
     ret
 
-mfence ENDP
+_mfence ENDP
 
 
 ;
-; Function: void clflush ( void* rcx )
+; Function: void _clflush ( void* rcx )
 ;
 ; Description: This function is used to flush a cache line from all levels
 ;              of the cache hierarchy. It ensures that the data in the
@@ -54,15 +57,15 @@ mfence ENDP
 ;
 ; Returns:     None
 ;
-clflush PROC
+_clflush PROC
 
     clflush [rcx]
     ret
 
-clflush ENDP
+_clflush ENDP
 
 ;
-; Function: void tlbflush ( void* rcx )
+; Function: void _tlbflush ( void* rcx )
 ;
 ; Description: This function is used to flush the Translation Lookaside Buffer
 ; 			   (TLB) entry for the specified virtual address. It ensures that
@@ -77,12 +80,12 @@ clflush ENDP
 ;
 ; Returns:     None
 ;
-tlbflush PROC
+_tlbflush PROC
 
     mov rax, rcx
     invlpg [rax]
     ret
 
-tlbflush ENDP
+_tlbflush ENDP
 
 END

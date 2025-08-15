@@ -243,7 +243,10 @@
     <ClInclude Include="util.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="general.masm" />
+    <MASM Include="general.masm">
+      <FileType>Document</FileType>
+      <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='QemuDebug|x64'">false</GenerateDebugInformation>
+    </MASM>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
