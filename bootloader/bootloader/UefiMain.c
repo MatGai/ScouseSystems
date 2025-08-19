@@ -48,7 +48,7 @@ UefiMain(
     EFI_TIME time;
     gRT->GetTime(&time, NULL);
 
-    Print(L"%02d/%02d/%04d ----- %02d:%02d:%0d.%d\r\n", time.Month, time.Day, time.Year, time.Hour, time.Minute, time.Second, time.Nanosecond);
+    Print(L"%02d/%02d/%04d ----- %02d:%02d:%0d.%d\r\n", time.Day, time.Month, time.Year, time.Hour, time.Minute, time.Second, time.Nanosecond);
 
     if (!BlInitFileSystem())
     {
@@ -71,7 +71,7 @@ UefiMain(
 
     Print(L"\nLooking for 'kernel.exe' file pointer\n");
     EFI_FILE_PROTOCOL* File = NULL;
-    if (BlFindFile("kernel.exe", &File))
+    if (BlFindFile(L"kernel.exe", &File))
     {
         CHAR16* Buffer;
         if (BlGetFileName(File, &Buffer))
@@ -89,7 +89,7 @@ UefiMain(
 
     DBG_INFO(L"starting load kernel\n");
 
-    BlLdrLoadPEImage64("kernel.exe", &FileInfo);
+    BlLdrLoadPEImage64(L"kernel.exe", &FileInfo);
 
     typedef int(__cdecl* KernelEntry)(EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL* ConOut);
     KernelEntry EntryPoint = (KernelEntry)FileInfo.EntryPoint;

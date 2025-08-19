@@ -117,7 +117,7 @@ BOOLEAN
 BLAPI
 BlOpenSubDirectory(
     _In_  EFI_FILE_PROTOCOL* BaseDirectory,
-    _In_  CHAR16* Path,
+    _In_  PCWSTR Path,
     _Out_ EFI_FILE_PROTOCOL** OutDirectory
 )
 {
@@ -162,13 +162,13 @@ BlOpenSubDirectory(
     }
 
     *OutDirectory = NewDirectory;
-    return FALSE;
+    return TRUE;
 }
 
 BOOLEAN
 BLAPI
 BlFindFile(
-    _In_ LPCSTR File,
+    _In_ PCWSTR File,
     _Out_ EFI_FILE_PROTOCOL** OutFile
 )
 {
@@ -201,7 +201,10 @@ BlFindFile(
 
     if (EFI_ERROR(FILE_SYSTEM_STATUS))
     {
+        Print(L"Failed to open file '%s' with error %s\n", File, FILE_SYSTEM_STATUS);
+        getc();
         DBG_ERROR(FILE_SYSTEM_STATUS, L"Failed to open file '%s'\n", File );
+
         return FALSE;
     }
 
@@ -343,7 +346,7 @@ BlGetLastFileError(
 BOOLEAN
 BLAPI
 BlSetWorkingDirectory(
-    _In_ LPCSTR Directory
+    _In_ PCWSTR Directory
 )
 {
     if (Directory == NULL || Directory[0] == '\0')
@@ -385,7 +388,7 @@ BlSetWorkingDirectory(
 BOOLEAN
 BlGetFileName(
     _In_ EFI_FILE_PROTOCOL* FileProtocol,
-    _Out_ CHAR16** Out 
+    _Out_ PCWSTR* Out 
 )
 {
     if (FileProtocol == NULL) 

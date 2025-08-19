@@ -24,7 +24,7 @@ typedef struct _BL_LDR_FILE_IMAGE
 BL_STATUS
 BLAPI
 BlLdrLoadPEImageFile(
-	_In_ CHAR8* ImagePath,
+	_In_ PCWSTR ImagePath,
 	_Inout_ PBL_LDR_FILE_IMAGE FileImage
 );
 
@@ -33,7 +33,7 @@ BLAPI
 BlLdrAllocatePEImagePages(
 	_In_ PBL_LDR_FILE_IMAGE FileImage,
 	_Inout_ PBYTE* ImagePages,
-	_Out_ EFI_PHYSICAL_ADDRESS** ImagePagesPhysical
+	_Out_ EFI_PHYSICAL_ADDRESS* ImagePagesPhysical
 );
 
 BL_STATUS
@@ -53,7 +53,7 @@ BlLdrImageRelocation(
 BL_STATUS
 BLAPI
 BlLdrLoadPEImage64(
-	_In_ CHAR8* ImagePath,
+	_In_ PCWSTR ImagePath,
 	_Inout_ PBL_LDR_LOADED_IMAGE_INFO LoadedImageInfo
 );
 

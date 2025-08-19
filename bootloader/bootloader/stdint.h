@@ -18,12 +18,16 @@ typedef ULONG* PULONG;
 
 typedef char CHAR;
 typedef CHAR* PCHAR;
+typedef CHAR* PSTR;
 typedef CONST CHAR* LPCSTR;
+typedef CONST CHAR* PCSTR;
 
-//typedef wchar_t WCHAR;
-//typedef WCHAR* PWCHAR;
-//typedef CONST PWCHAR LPCWSTR;
-//
+typedef unsigned short WCHAR;
+typedef WCHAR* PWCHAR;
+typedef WCHAR* PSTRW;
+typedef CONST PWCHAR LPCWSTR;
+typedef CONST PWCHAR PCWSTR;
+
 typedef unsigned char BYTE;
 typedef BYTE* PBYTE;
 

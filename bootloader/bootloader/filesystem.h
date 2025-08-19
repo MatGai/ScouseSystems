@@ -13,7 +13,7 @@
 
 static EFI_GUID __FileSystemProtoclGUID__ = SIMPLE_FILE_SYSTEM_PROTOCOL;
 
-static LPCSTR             CurrentDirectoryString;
+static PCWSTR             CurrentDirectoryString;
 static EFI_FILE_PROTOCOL* CurrentDirectory;
 static EFI_HANDLE*        CurrentFileSystemHandle;
 static EFI_STATUS         FILE_SYSTEM_STATUS;
@@ -75,7 +75,7 @@ BlGetRootDirectoryByIndex(
 BOOLEAN
 BLAPI
 BlSetWorkingDirectory(
-    _In_ LPCSTR Directory
+    _In_ PCWSTR Directory
 );
 
 /**
@@ -117,7 +117,7 @@ BOOLEAN
 BLAPI
 BlOpenSubDirectory(
     _In_  EFI_FILE_PROTOCOL* BaseDirectory,
-    _In_  CHAR16* Path,
+    _In_  PCWSTR Path,
     _Out_ EFI_FILE_PROTOCOL** OutDirectory
 );
 
@@ -133,7 +133,7 @@ BlOpenSubDirectory(
 BOOLEAN
 BLAPI
 BlFindFile(
-    _In_ LPCSTR File,
+    _In_ PCWSTR File,
     _Out_ EFI_FILE_PROTOCOL** Out
 );
 
@@ -159,7 +159,7 @@ BlGetLastFileError(
 BOOLEAN
 BlGetFileName(
     _In_ EFI_FILE_PROTOCOL* FileProtocol,
-    _Out_ CHAR16** Out
+    _Out_ PCWSTR* Out
 );
 
 /**
@@ -188,7 +188,7 @@ BlGetFileInfo(
 VOID
 BLAPI
 BlFindFileDirectory(
-    _In_ LPCSTR File
+    _In_ PCWSTR File
 );
 
 #endif // !_FILESYSTEM_H

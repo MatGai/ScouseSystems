@@ -5,7 +5,7 @@
 BL_STATUS
 BLAPI
 BlLdrLoadPEImageFile(
-	_In_ CHAR8* ImagePath,
+	_In_ PCWSTR ImagePath,
 	_Inout_ PBL_LDR_FILE_IMAGE FileImageData
 )
 {
@@ -17,12 +17,14 @@ BlLdrLoadPEImageFile(
 	EFI_FILE_PROTOCOL* ImageFileHandle = NULL;
 	if (BlFindFile(ImagePath, &ImageFileHandle) == FALSE)
 	{
+		ImageFileHandle->Close(ImageFileHandle);
 		return BL_STATUS_INVALID_PATH;
 	}
 
 	EFI_FILE_INFO* ImageFileInfo = NULL;
 	if (BlGetFileInfo(ImageFileHandle, &ImageFileInfo) == FALSE)
 	{
+		ImageFileHandle->Close(ImageFileHandle);
 		return BL_STATUS_GENERIC_ERROR;
 	}
 
@@ -33,14 +35,17 @@ BlLdrLoadPEImageFile(
 	PBYTE FileImage = NULL;
 	if (EFI_ERROR(gBS->AllocatePool(EfiBootServicesData, FileImageSize, &FileImage)))
 	{
+		ImageFileHandle->Close(ImageFileHandle);
 		return BL_STATUS_GENERIC_ERROR;
 	}
 
 	if (EFI_ERROR(ImageFileHandle->Read(ImageFileHandle, &FileImageSize, FileImage)))
 	{
+		ImageFileHandle->Close(ImageFileHandle);
 		return BL_STATUS_GENERIC_ERROR;
 	}
 
+	ImageFileHandle->Close(ImageFileHandle);
 	FileImageData->File = FileImage;
 	FileImageData->FileSize = FileImageSize;
 
@@ -52,7 +57,7 @@ BLAPI
 BlLdrAllocatePEImagePages(
 	_In_ PBL_LDR_FILE_IMAGE FileImage,
 	_Inout_ PBYTE* ImagePages,
-	_Out_ EFI_PHYSICAL_ADDRESS** ImagePagesPhysical
+	_Out_ EFI_PHYSICAL_ADDRESS* ImagePagesPhysical
 )
 {
 	if (FileImage == NULL || ImagePagesPhysical == NULL || ImagePages == NULL)
@@ -62,29 +67,39 @@ BlLdrAllocatePEImagePages(
 
 	PEFI_IMAGE_NT_HEADERS FileNtHeaders = EFI_IMAGE_NTHEADERS(FileImage->File);
 	ULONG64 Pages = EFI_SIZE_TO_PAGES( FileNtHeaders->OptionalHeader.SizeOfImage );
-	*ImagePagesPhysical = FileNtHeaders->OptionalHeader.ImageBase;
+	//*ImagePagesPhysical = FileNtHeaders->OptionalHeader.ImageBase;
+
+    EFI_PHYSICAL_ADDRESS ImageBase = FileNtHeaders->OptionalHeader.ImageBase;
 
 	//
 	// try to allocate at prefered base
 	//
-	gBS->AllocatePages(AllocateAnyPages/*AllocateAddress*/, EfiBootServicesCode, Pages, ImagePagesPhysical);
-	//EFI_STATUS PageError = gBS->AllocatePages(/*AllocateAnyPages*/AllocateAddress, EfiBootServicesCode, Pages, *ImagePagesPhysical);
+	//gBS->AllocatePages(AllocateAnyPages/*AllocateAddress*/, EfiBootServicesCode, Pages, ImagePagesPhysical);
+	EFI_STATUS PageStatus = gBS->AllocatePages(/*AllocateAnyPages*/AllocateAddress, EfiBootServicesCode, Pages, &ImageBase);
 
-	//if (EFI_ERROR(PageError))
-	//{
-	//	if (PageError == EFI_NOT_FOUND)
-	//	{
+	if (EFI_ERROR(PageStatus))
+	{
+		if (PageStatus == EFI_NOT_FOUND)
+		{
 
-	//		//
-	//		// oh well, we can just fix relocations
-	//		//
-	//		gBS->AllocatePages(AllocateAnyPages/*AllocateAddress*/, EfiBootServicesCode, Pages, ImagePagesPhysical);
-	//	}
-	//	else
-	//	{
-	//		return BL_STATUS_GENERIC_ERROR;
-	//	}
-	//}
+			//
+			// oh well, we can just fix relocations
+			//
+			PageStatus = gBS->AllocatePages(AllocateAnyPages/*AllocateAddress*/, EfiBootServicesCode, Pages, &ImageBase);
+
+			if( EFI_ERROR(PageStatus) )
+			{
+				//
+				// we failed to allocate memory for the image
+				//
+				return BL_STATUS_GENERIC_ERROR;
+            }
+		}
+		else
+		{
+			return BL_STATUS_GENERIC_ERROR;
+		}
+	}
 
 	// not really needed...i hope...
 	//ZeroMem(
@@ -93,7 +108,7 @@ BlLdrAllocatePEImagePages(
 	//);
 
 	CopyMem(
-		*ImagePagesPhysical, 
+		(PVOID)(UINTN)ImageBase,
 		(PVOID)FileImage->File, 
 		FileNtHeaders->OptionalHeader.SizeOfHeaders
 	);
@@ -102,7 +117,8 @@ BlLdrAllocatePEImagePages(
 	// at this stage memory is identity mapped so the 
 	// virtual address will be the same as the physical
 	//
-	*ImagePages = (PBYTE)(UINTN)*ImagePagesPhysical;
+    *ImagePagesPhysical = ImageBase;
+	*ImagePages = (PBYTE)(UINTN)ImageBase;
 
 	return BL_STATUS_OK;
 }
@@ -110,7 +126,7 @@ BlLdrAllocatePEImagePages(
 BL_STATUS
 BLAPI
 BlLdrLoadPEImage64(
-	_In_ CHAR8* ImagePath,
+	_In_ PCWSTR ImagePath,
 	_Inout_ PBL_LDR_LOADED_IMAGE_INFO LoadedImageInfo
 )
 {
