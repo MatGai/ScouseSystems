@@ -139,9 +139,10 @@ ULONG64    SsPfnFreeHead;
 
 #define DEFAULT_PAGE_SIZE 0x1000
 #define LARGE_PAGE_SIZE   0x200000
-#define LARGEST_PAGE_SIZE 0x80000000
+#define LARGEST_PAGE_SIZE 0x40000000
 
 #define PAGE_SHIFT 12
+#define PFN_LIST_END 0xffffff
 
 #define PFN_TO_PHYSICAL_SIZE( pfn, size ) ((pfn) << size) 
 #define PFN_TO_PHYSICAL( pfn ) ( PFN_TO_PHYSICAL_SIZE( pfn, PAGE_SHIFT ) )
@@ -184,6 +185,12 @@ typedef struct _BL_EFI_MEMORY_MAP
 
 /**
 * Converst a physical address to a virtual address 
+* in the direct mapped region.
+* Only works after paging has been initialized.
+* 
+* @param PhysicalAddress A physical address to convert.
+* 
+* @return A virtual address in the direct mapped region.
 */
 STATIC 
 __forceinline
@@ -204,7 +211,7 @@ SsGetFreePhysicalPage(
     VOID
 )
 {
-    if (SsPfnFreeHead == 0xffffff)
+    if (SsPfnFreeHead == PFN_LIST_END)
     {
         DBG_INFO(L"No Free memory!");
         getc();
@@ -219,7 +226,7 @@ SsGetFreePhysicalPage(
 
     Entry->State = Allocated;
     Entry->Ref = 1;
-    Entry->Offset = 0xffffff;
+    Entry->Offset = PFN_LIST_END;
 
     return PageBase;
 }
@@ -234,7 +241,7 @@ SsFreePhysicalPage(
 {
     ULONG64 IndexPFN = PHYSICAL_TO_PFN( Address );
 
-    if(IndexPFN >= SsPfnCount );
+    if(IndexPFN >= SsPfnCount )
     {
         DBG_INFO( L"Pfn too large\n" );
         getc();
@@ -245,13 +252,13 @@ SsFreePhysicalPage(
     PFN->State = Free;
     PFN->Ref = 0;
     PFN->Offset = (UINT32)SsPfnFreeHead;
-    SsPfnFreeHead = (ULONG64)PFN;
+    SsPfnFreeHead = IndexPFN;
 };
 
 
 // DirectPagingInit initializes our paging structures for the direct map.
 // It allocates one page for the PML4 (level-4 table) and zeros it.
-VOID
+ULONG64
 BLAPI
 SsPagingInit(
     VOID
@@ -263,12 +270,14 @@ SsPagingInit(
     {
         DBG_INFO(L"No free memory!");
         getc();
-        return;
+        return NULL;
     }
 
-    gPML4 =  (ULONG64*)PhysicalToVirtual(FreePage);
+    gPML4 =  (ULONG64*)(PVOID)FreePage;
 
     ZeroMem(gPML4, DEFAULT_PAGE_SIZE);
+
+    return FreePage;
 }
 
 // MapPage maps a single 4KB page so that virtual address 'vaddr'
@@ -305,7 +314,6 @@ MapPage(
 
         Pml4e->Value = (PdptPhysical & 0xFFFFFFFFFFFFF000ULL) | FLAG_PRESENT | FLAG_RW;
 
-        tlbflush(PdptVirtual);
         mfence();
     }
     PdptTable = (PPDPTE)PhysicalToVirtual(Pml4e->Pfn << PAGE_SHIFT);
@@ -324,7 +332,6 @@ MapPage(
 
         Pdpe->Value = (PdPhysical & 0xFFFFFFFFFFFFF000ULL) | FLAG_PRESENT | FLAG_RW;
 
-        tlbflush(PdVirtual);
         mfence();
     }
     PdTable = (PPDE)PhysicalToVirtual(Pdpe->Pfn << PAGE_SHIFT);
@@ -343,35 +350,190 @@ MapPage(
 
         Pde->Value = (PtPhysical & 0xFFFFFFFFFFFFF000ULL) | FLAG_PRESENT | FLAG_RW;
 
-        tlbflush(PtVirtual);
         mfence();
     }
     PtTable = (PPTE)PhysicalToVirtual(Pde->Pfn << PAGE_SHIFT);
 
     PPTE Pte = &PtTable[VirtualAddress->PtIndex];
     Pte->Value = (paddr & 0xFFFFFFFFFFFFF000ULL) | flags;
+    tlbflush((VOID*)vaddr);
+    mfence();
     return EFI_SUCCESS;
 }
+
+// MapLargePage maps a single 2MB or 1GB page, depending on 'size'.
+// Size must be either LARGE_PAGE_SIZE or LARGEST_PAGE_SIZE
+EFI_STATUS
+MapLargePage(
+    ULONG64 vaddr,
+    ULONG64 paddr,
+    ULONG64 size,
+    ULONG64 flags
+)
+{
+    VIRT_ADDR_T VirtualAddress = { .Value = (PVOID)vaddr };
+
+    Print(L"\nHelp 0 vaddr %p, va %p\n", vaddr, VirtualAddress);
+    getc();
+
+    Print(L"Plm4e %p\n", VirtualAddress.Plm4Index);
+    getc();
+
+    PPML4E Pml4e = &gPML4[VirtualAddress.Plm4Index];
+    if (!(Pml4e->Present))
+    {
+
+        Print(L"Help 0.1\n");
+        getc();
+
+        ULONG64 PdptPhysical = SsGetFreePhysicalPage();
+        if (!PdptPhysical)
+        {
+            return EFI_OUT_OF_RESOURCES;
+        }
+
+        Print(L"Help 0.2 %p\n", PdptPhysical);
+        getc();
+
+        PVOID PdptVirtual = PhysicalToVirtual(PdptPhysical);
+        ZeroMem(PdptVirtual, DEFAULT_PAGE_SIZE);
+
+        Print(L"Help 0.3\n");
+        getc();
+
+        Pml4e->Value = (PdptPhysical & 0xFFFFFFFFFFFFF000ULL) | FLAG_PRESENT | FLAG_RW;
+
+        Print(L"Help 0.4\n");
+        getc();
+
+        tlbflush(PdptVirtual);
+        mfence();
+
+        Print(L"Help 0.5\n");
+        getc();
+    }
+
+    PPDPTE PdptTable = (PPDPTE)PhysicalToVirtual(Pml4e->Pfn << PAGE_SHIFT);
+
+    Print(L"Help 1\n");
+    getc();
+
+    if (size == LARGEST_PAGE_SIZE)
+    {
+        PPDPTE Pdpe = &PdptTable[VirtualAddress.PdptIndex];
+        Pdpe->Value = (paddr & ~(LARGEST_PAGE_SIZE - 1ULL)) | flags | FLAG_PS;
+        return EFI_SUCCESS;
+    }
+
+    PPDPTE Pdpe = &PdptTable[VirtualAddress.PdptIndex];
+    if (!(Pdpe->Present))
+    {
+        ULONG64 PdPhysical = SsGetFreePhysicalPage();
+        if (!PdPhysical)
+        {
+            return EFI_OUT_OF_RESOURCES;
+        }
+        PVOID PdVirtual = PhysicalToVirtual(PdPhysical);
+        ZeroMem(PdVirtual, DEFAULT_PAGE_SIZE);
+
+        Pdpe->Value = (PdPhysical & 0xFFFFFFFFFFFFF000ULL) | FLAG_PRESENT | FLAG_RW;
+
+        tlbflush(PdVirtual);
+        mfence();
+    }
+
+    Print(L"Help 2\n");
+    getc();
+
+    if (size == LARGE_PAGE_SIZE)
+    {
+        PPDE PdTable = (PPDE)PhysicalToVirtual(Pdpe->Pfn << PAGE_SHIFT);
+        PPDE Pde = &PdTable[VirtualAddress.PdIndex];
+        Pde->Value = (paddr & ~(LARGE_PAGE_SIZE - 1ULL)) | flags | FLAG_PS;
+        return EFI_SUCCESS;
+    }
+
+    return MapPage(vaddr, paddr, flags);
+}
+
 
 // DirectMapRange maps all physical memory from physStart to physEnd
 // into the direct mapped region so that VA = DIRECT_MAP_BASE + PA.
 // The caller must ensure that physStart and physEnd are page-aligned.
 EFI_STATUS DirectMapRange(
-    UINT64 physStart, 
-    UINT64 physEnd
+    ULONG64 PhysStart, 
+    ULONG64 PhysEnd
 )
 {
-    if ((physStart % DEFAULT_PAGE_SIZE) || (physEnd % DEFAULT_PAGE_SIZE))
-        return EFI_INVALID_PARAMETER;
-
-    for (UINT64 phys = physStart; phys < physEnd; phys += DEFAULT_PAGE_SIZE)
+    if ((PhysStart % DEFAULT_PAGE_SIZE) || (PhysEnd % DEFAULT_PAGE_SIZE))
     {
-        UINT64 vaddr = DIRECT_MAP_BASE + phys;
-        EFI_STATUS Status = MapPage(vaddr, phys, FLAG_PRESENT | FLAG_RW | FLAG_NX);
-        if (EFI_ERROR(Status))
+        return EFI_INVALID_PARAMETER;
+    }
+
+    Print(L"\nPhys start %p, end %p\n", PhysStart, PhysEnd);
+    getc();
+
+    for (UINT64 Phys = PhysStart; Phys < PhysEnd;)
+    {
+        ULONG64 Remaining = PhysEnd - Phys;
+        ULONG64 vaddr = DIRECT_MAP_BASE + Phys;
+        EFI_STATUS Status;
+
+        Print(L"Fail 0");
+        getc();
+
+        if ((Phys % LARGEST_PAGE_SIZE) == 0 && Remaining >= LARGEST_PAGE_SIZE)
         {
-            return Status;
+            Print(L"Fail 1");
+            getc();
+
+            Print(L"vaddr %p, phys %p, remaining %p", vaddr, Phys, Remaining);
+            Status = MapLargePage(vaddr, Phys, LARGEST_PAGE_SIZE, FLAG_PRESENT | FLAG_RW | FLAG_NX);
+
+            Print(L"Fail 1.1");
+            getc();
+
+            if (EFI_ERROR(Status))
+            {
+                Print(L"Fail 1.2 error");
+                getc();
+                return Status;
+            }
+
+            Print(L"Fail 1.3 ");
+            getc();
+
+            Phys += LARGEST_PAGE_SIZE;
         }
+        else if ((Phys % LARGE_PAGE_SIZE) == 0 && Remaining >= LARGE_PAGE_SIZE)
+        {
+
+            Print(L"Fail 2");
+            getc();
+
+            Status = MapLargePage(vaddr, Phys, LARGE_PAGE_SIZE, FLAG_PRESENT | FLAG_RW | FLAG_NX);
+            if (EFI_ERROR(Status))
+            {
+                return Status;
+            }
+            Phys += LARGE_PAGE_SIZE;
+        }
+        else
+        {
+
+            Print(L"Fail 3");
+            getc();
+
+            Status = MapPage(vaddr, Phys, FLAG_PRESENT | FLAG_RW | FLAG_NX);
+            if (EFI_ERROR(Status))
+            {
+                return Status;
+            }
+            Phys += DEFAULT_PAGE_SIZE;
+        }
+
+        Print(L"Fail 4");
+        getc();
     }
     //ReloadCR3(); // Flush the TLB
     return EFI_SUCCESS;

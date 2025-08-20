@@ -29,9 +29,14 @@ typedef struct _EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL {
     EFI_SIMPLE_TEXT_OUTPUT_MODE* Mode;
 } EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL;
 
+typedef struct _BOOT_INFO {
+    unsigned __int64 DirectMapBase;
+    unsigned __int64 Pml4Physical;
+} BOOT_INFO, * PBOOT_INFO;
 
 int KernelMain(
-    EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL* ConOut
+    EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL* ConOut,
+    PBOOT_INFO BootInfo
 )
 {
     ConOut->Print(ConOut, L"Hello from kernel\r\n");

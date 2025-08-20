@@ -1,6 +1,13 @@
 #include "filesystem.h"
 #include "image.h"
 #include "pagemanager.h"
+#include "control.h"
+
+typedef struct _BOOT_INFO
+{
+    ULONG64 DirectMapBase;
+    ULONG64 Pml4Physical;
+} BOOT_INFO, * PBOOT_INFO;
 
 CHAR8* gEfiCallerBaseName = "Scouse Systems";
 const UINT32 _gUefiDriverRevision = 0x0;
@@ -91,14 +98,8 @@ UefiMain(
 
     BlLdrLoadPEImage64(L"kernel.exe", &FileInfo);
 
-    typedef int(__cdecl* KernelEntry)(EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL* ConOut);
+    typedef int(__cdecl* KernelEntry)(EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL* ConOut, PBOOT_INFO BootInfo);
     KernelEntry EntryPoint = (KernelEntry)FileInfo.EntryPoint;
-    int ret = EntryPoint(gST->ConOut);
-
-    Print(L"EntryPoint returned %d\n", ret);
-    Print(L"Kernel base %p\n", FileInfo.Base);
-    getc();
-
 
     //
     // now we need to get details of memory, luckily efi provides this to us.
@@ -228,6 +229,38 @@ UefiMain(
     Print(L"PFN free head -> %p\n", SsPfnFreeHead);
     Print(L"PFN count -> %d\n", SsPfnCount);
 
+    ULONG64 Pml4Physical = SsPagingInit();
+    if (!Pml4Physical)
+    {
+        getc();
+        return 1;
+    }
+
+    Print(L"PML4 Physical -> %p, MaxAddress -> %p\n", Pml4Physical, MaxAddress);
+    getc();
+
+    EFI_STATUS MapStatus = DirectMapRange(0, MaxAddress);
+    if (EFI_ERROR(MapStatus))
+    {
+        DBG_ERROR(MapStatus, L"Failed to map RAM\n");
+        getc();
+        return 1;
+    }
+
+    Print(L"Direct mapped range 0x%p - 0x%p\n", DIRECT_MAP_BASE, MaxAddress);
+    getc();
+
+    __writecr3(Pml4Physical);
+
+    Print(L"CR3 set to %p\n", Pml4Physical);
+    getc();
+
+    BOOT_INFO BootInfo = { DIRECT_MAP_BASE, Pml4Physical };
+
+    int ret = EntryPoint(gST->ConOut, &BootInfo);
+
+    Print(L"EntryPoint returned %d\n", ret);
+    Print(L"Kernel base %p\n", FileInfo.Base);
     getc();
 
     return EFI_SUCCESS;
