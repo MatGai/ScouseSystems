@@ -33,7 +33,7 @@ typedef enum _FILE_SYSTEM
 * 
 * @return TRUE on success, FALSE on error. Get error through BlGetLastFileError() if needed.
 */
-BOOLEAN
+EFI_STATUS
 BLAPI
 BlInitFileSystem(
     VOID
@@ -46,7 +46,7 @@ BlInitFileSystem(
 * 
 * @return TRUE on success, FALSE on error. Get error through BlGetLastFileError() if needed.
 */
-BOOLEAN
+EFI_STATUS
 BLAPI
 BlGetRootDirectory(
     _Out_opt_ EFI_FILE_PROTOCOL** Directory
@@ -60,7 +60,7 @@ BlGetRootDirectory(
 * 
 * @return TRUE on success, FALSE on error. Get error through BlGetLastFileError() if needed.
 */
-BOOLEAN
+EFI_STATUS
 BLAPI
 BlGetRootDirectoryByIndex(
     _In_ FILE_SYSTEM Index,
@@ -72,7 +72,7 @@ BlGetRootDirectoryByIndex(
 * 
 * @param Directory A string of the directory etc... "\\efi\\boot".
 */
-BOOLEAN
+EFI_STATUS
 BLAPI
 BlSetWorkingDirectory(
     _In_ PCWSTR Directory
@@ -86,7 +86,7 @@ BlSetWorkingDirectory(
 *
 * @return TRUE on success, FALSE on error. Get error through BlGetLastFileError() if needed.
 */
-BOOLEAN
+EFI_STATUS
 BLAPI
 BlListDirectoryRecursive(
     _In_ EFI_FILE_PROTOCOL* Directory,
@@ -98,7 +98,7 @@ BlListDirectoryRecursive(
 * 
 * @return TRUE on success, FALSE on error. Get error through BlGetLastFileError() if needed.
 */
-BOOLEAN
+EFI_STATUS
 BLAPI
 BlListAllFiles(
     VOID
@@ -113,7 +113,7 @@ BlListAllFiles(
 * 
 * @return TRUE on success, FALSE on error. Get error through BlGetLastFileError() if needed.
 */
-BOOLEAN
+EFI_STATUS
 BLAPI
 BlOpenSubDirectory(
     _In_  EFI_FILE_PROTOCOL* BaseDirectory,
@@ -130,10 +130,10 @@ BlOpenSubDirectory(
 * 
 * @return TRUE on success, FALSE on error. Get error through BlGetLastFileError() if needed.
 */
-BOOLEAN
+EFI_STATUS
 BLAPI
 BlFindFile(
-    _In_ PCWSTR File,
+    _In_  PCWSTR File,
     _Out_ EFI_FILE_PROTOCOL** Out
 );
 
@@ -156,7 +156,7 @@ BlGetLastFileError(
 * 
 * @return TRUE on success, FALSE on error. Get error through BlGetLastFileError() if needed.
 */
-BOOLEAN
+EFI_STATUS
 BlGetFileName(
     _In_ EFI_FILE_PROTOCOL* FileProtocol,
     _Out_ PCWSTR* Out
@@ -170,7 +170,7 @@ BlGetFileName(
 * 
 * @return TRUE on success, FALSE on error. Get error through BlGetLastFileError() if needed.
 */
-BOOLEAN
+EFI_STATUS
 BlGetFileInfo(
     _In_ EFI_FILE_HANDLE FileHandle,
     _Inout_ EFI_FILE_INFO** FileInfo

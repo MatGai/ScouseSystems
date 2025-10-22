@@ -57,18 +57,18 @@ UefiMain(
 
     Print(L"%02d/%02d/%04d ----- %02d:%02d:%0d.%d\r\n", time.Day, time.Month, time.Year, time.Hour, time.Minute, time.Second, time.Nanosecond);
 
-    if (!BlInitFileSystem())
+    if ( EFI_ERROR(BlInitFileSystem()) )
     {
         return 1;
     }
 
-    if (BlGetRootDirectory(NULL))
+    if ( !EFI_ERROR(BlGetRootDirectory(NULL)) )
     {
         BlListAllFiles();
     }
     else
     {
-        if (EFI_ERROR(FILE_SYSTEM_STATUS))
+        if ( EFI_ERROR(FILE_SYSTEM_STATUS) )
         {
             Print(L"[ %r ] Failed to get root directory of current FS\n", BlGetLastFileError());
         }
@@ -78,7 +78,7 @@ UefiMain(
 
     Print(L"\nLooking for 'kernel.exe' file pointer\n");
     EFI_FILE_PROTOCOL* File = NULL;
-    if (BlFindFile(L"kernel.exe", &File))
+    if (!EFI_ERROR( BlFindFile(L"kernel.exe", &File) ))
     {
         CHAR16* Buffer;
         if (BlGetFileName(File, &Buffer))
@@ -86,6 +86,12 @@ UefiMain(
             Print(L"Got the file -> %s\n\n", Buffer);
         }
         FreePool(Buffer);
+    }
+    else
+    {
+        Print(L"Failed to find 'kernel.exe' file pointer\n");
+        getc();
+        return EFI_LOAD_ERROR;
     }
 
     getc();
@@ -100,6 +106,8 @@ UefiMain(
 
     typedef int(__cdecl* KernelEntry)(EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL* ConOut, PBOOT_INFO BootInfo);
     KernelEntry EntryPoint = (KernelEntry)FileInfo.EntryPoint;
+
+    Print(L"Kernel Image base %p, entry point %p, va %p\n", FileInfo.Base, FileInfo.EntryPoint, FileInfo.VirtualBase);
 
     //
     // now we need to get details of memory, luckily efi provides this to us.
@@ -145,10 +153,21 @@ UefiMain(
     //
     for (ULONG64 i = 0; i < NumberOfDescriptors; i++)
     {
-        ULONG64 End = Desc->PhysicalStart + (Desc->NumberOfPages * DEFAULT_PAGE_SIZE);
-        if (End > MaxAddress)
+        switch (Desc->Type)
         {
-            MaxAddress = End;
+            case EfiConventionalMemory:
+            {
+                ULONG64 End = Desc->PhysicalStart + (Desc->NumberOfPages * DEFAULT_PAGE_SIZE);
+                if (End > MaxAddress)
+                {
+                    MaxAddress = End;
+                }
+                break;
+            }
+            default:
+            {
+                break;
+            }
         }
         Desc = SsGetNextDescriptor(Desc, SystemMemoryMap.DescriptorSize);
     }
@@ -197,11 +216,11 @@ UefiMain(
 
         switch (Desc->Type)
         {
-            // realistically we do not care about firmware memory anymore.
+            // realistically we do not care about firmware memory anymore. 
+            // Do not include runtimeservices, MMIO or other reserved memory as we are not mapping them.
             case EfiConventionalMemory:
-            case EfiBootServicesCode:
-            case EfiBootServicesData:
-            case EfiPersistentMemory:
+            //case EfiBootServicesCode:
+            //case EfiBootServicesData:
             {
                 ULONG64 StartPFN = PHYSICAL_TO_PFN(Start);
                 ULONG64 EndPFN = PHYSICAL_TO_PFN(End);
@@ -250,14 +269,26 @@ UefiMain(
     Print(L"Direct mapped range 0x%p - 0x%p\n", DIRECT_MAP_BASE, MaxAddress);
     getc();
 
-    __writecr3(Pml4Physical);
+    EFI_STATUS s = MapKernel(FileInfo.Base, KERNEL_VA_BASE);
+    DBG_ERROR(s);
+
+    Print(L"Kernel mapped to %p, entry rva %p\n", KERNEL_VA_BASE, KERNEL_VA_BASE + FileInfo.EntryPoint);
+    getc();
+
 
     Print(L"CR3 set to %p\n", Pml4Physical);
     getc();
 
+    __writecr3(Pml4Physical);
+
+
     BOOT_INFO BootInfo = { DIRECT_MAP_BASE, Pml4Physical };
 
-    int ret = EntryPoint(gST->ConOut, &BootInfo);
+
+    typedef int(__cdecl* KernelEntry)(EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL*, PBOOT_INFO);
+    KernelEntry Entry = (KernelEntry)(UINTN)(KERNEL_VA_BASE + FileInfo.EntryPoint);
+
+    int ret = Entry(gST->ConOut, &BootInfo);
 
     Print(L"EntryPoint returned %d\n", ret);
     Print(L"Kernel base %p\n", FileInfo.Base);

@@ -2,30 +2,34 @@
 #include "pe.h"
 #include "filesystem.h"
 
-BL_STATUS
+EFI_STATUS
 BLAPI
 BlLdrLoadPEImageFile(
 	_In_ PCWSTR ImagePath,
 	_Inout_ PBL_LDR_FILE_IMAGE FileImageData
 )
 {
+	EFI_STATUS LastError = NULL;
+
 	if (ImagePath == NULL || FileImageData == NULL)
 	{
-		return BL_STATUS_INVALID_PARAMETER;
+		return EFI_INVALID_PARAMETER;
 	}
 
 	EFI_FILE_PROTOCOL* ImageFileHandle = NULL;
-	if (BlFindFile(ImagePath, &ImageFileHandle) == FALSE)
+	LastError = BlFindFile(ImagePath, &ImageFileHandle);
+	if ( EFI_ERROR( LastError ) )
 	{
 		ImageFileHandle->Close(ImageFileHandle);
-		return BL_STATUS_INVALID_PATH;
+		return LastError;
 	}
 
 	EFI_FILE_INFO* ImageFileInfo = NULL;
-	if (BlGetFileInfo(ImageFileHandle, &ImageFileInfo) == FALSE)
+	LastError = BlGetFileInfo(ImageFileHandle, &ImageFileInfo);
+    if (EFI_ERROR ( LastError ) )
 	{
 		ImageFileHandle->Close(ImageFileHandle);
-		return BL_STATUS_GENERIC_ERROR;
+		return LastError;
 	}
 
 	UINTN FileImageSize = ImageFileInfo->FileSize;
@@ -33,26 +37,28 @@ BlLdrLoadPEImageFile(
 	gBS->FreePool(ImageFileInfo);
 
 	PBYTE FileImage = NULL;
-	if (EFI_ERROR(gBS->AllocatePool(EfiBootServicesData, FileImageSize, &FileImage)))
+	LastError = gBS->AllocatePool(EfiBootServicesData, FileImageSize, &FileImage);
+	if ( EFI_ERROR( LastError ) )
 	{
 		ImageFileHandle->Close(ImageFileHandle);
-		return BL_STATUS_GENERIC_ERROR;
+		return LastError;
 	}
 
-	if (EFI_ERROR(ImageFileHandle->Read(ImageFileHandle, &FileImageSize, FileImage)))
+	LastError = ImageFileHandle->Read(ImageFileHandle, &FileImageSize, FileImage);
+	if ( EFI_ERROR( LastError ) )
 	{
 		ImageFileHandle->Close(ImageFileHandle);
-		return BL_STATUS_GENERIC_ERROR;
+		return LastError;
 	}
 
 	ImageFileHandle->Close(ImageFileHandle);
 	FileImageData->File = FileImage;
 	FileImageData->FileSize = FileImageSize;
 
-	return BL_STATUS_OK;
+	return EFI_SUCCESS;
 }
 
-BL_STATUS
+EFI_STATUS
 BLAPI
 BlLdrAllocatePEImagePages(
 	_In_ PBL_LDR_FILE_IMAGE FileImage,
@@ -62,7 +68,7 @@ BlLdrAllocatePEImagePages(
 {
 	if (FileImage == NULL || ImagePagesPhysical == NULL || ImagePages == NULL)
 	{
-		return BL_STATUS_INVALID_PARAMETER;
+		return EFI_INVALID_PARAMETER;
 	}
 
 	PEFI_IMAGE_NT_HEADERS FileNtHeaders = EFI_IMAGE_NTHEADERS(FileImage->File);
@@ -73,9 +79,11 @@ BlLdrAllocatePEImagePages(
 
 	//
 	// try to allocate at prefered base
+	// Edit: realistically whilst this is happening in UEFI, we use direct addressing. Trying to map a phyical
+	// address to preferred virtual base is unrealistic so just allocate anywhere on physical!
 	//
 	//gBS->AllocatePages(AllocateAnyPages/*AllocateAddress*/, EfiBootServicesCode, Pages, ImagePagesPhysical);
-	EFI_STATUS PageStatus = gBS->AllocatePages(/*AllocateAnyPages*/AllocateAddress, EfiBootServicesCode, Pages, &ImageBase);
+	EFI_STATUS PageStatus = gBS->AllocatePages(AllocateAnyPages/*AllocateAddress*/, EfiBootServicesCode, Pages, &ImageBase);
 
 	if (EFI_ERROR(PageStatus))
 	{
@@ -83,21 +91,21 @@ BlLdrAllocatePEImagePages(
 		{
 
 			//
-			// oh well, we can just fix relocations
+			// I guess we can try prefered?
 			//
-			PageStatus = gBS->AllocatePages(AllocateAnyPages/*AllocateAddress*/, EfiBootServicesCode, Pages, &ImageBase);
+			PageStatus = gBS->AllocatePages(/*AllocateAnyPages*/AllocateAddress, EfiBootServicesCode, Pages, &ImageBase);
 
 			if( EFI_ERROR(PageStatus) )
 			{
 				//
 				// we failed to allocate memory for the image
 				//
-				return BL_STATUS_GENERIC_ERROR;
+				return PageStatus;
             }
 		}
 		else
 		{
-			return BL_STATUS_GENERIC_ERROR;
+			return PageStatus;
 		}
 	}
 
@@ -120,45 +128,48 @@ BlLdrAllocatePEImagePages(
     *ImagePagesPhysical = ImageBase;
 	*ImagePages = (PBYTE)(UINTN)ImageBase;
 
-	return BL_STATUS_OK;
+	return EFI_SUCCESS;
 }
 
-BL_STATUS
+EFI_STATUS
 BLAPI
 BlLdrLoadPEImage64(
 	_In_ PCWSTR ImagePath,
 	_Inout_ PBL_LDR_LOADED_IMAGE_INFO LoadedImageInfo
 )
 {
-	if (ImagePath == NULL || LoadedImageInfo == NULL)
+	if ( ImagePath == NULL || LoadedImageInfo == NULL )
 	{
-		return BL_STATUS_INVALID_PARAMETER;
+		return EFI_INVALID_PARAMETER;
 	}
+
+	EFI_STATUS LastError = NULL;
 
 	BL_LDR_FILE_IMAGE FileImage;
 	//EfiZeroMemory(&FileImage, sizeof(BL_LDR_FILE_IMAGE));
 
-	BL_STATUS Status = BlLdrLoadPEImageFile(ImagePath, &FileImage);
-	if (BL_ERROR(Status))
+	LastError = BlLdrLoadPEImageFile(ImagePath, &FileImage);
+	if ( EFI_ERROR(LastError) )
 	{
-		return Status;
+		return LastError;
 	}
 
-	if (PeIsValidImage(FileImage.File) == FALSE)
+	if ( PeIsValidImage(FileImage.File) == FALSE )
 	{
-		return BL_STATUS_GENERIC_ERROR;
+		return BL_STATUS_INVALID_PE_IMAGE;
 	}
 
 	PBYTE Image = NULL;
 	EFI_PHYSICAL_ADDRESS ImagePhysical = NULL;
-	if (BL_ERROR(BlLdrAllocatePEImagePages(&FileImage, &Image, &ImagePhysical)))
+	LastError = BlLdrAllocatePEImagePages(&FileImage, &Image, &ImagePhysical);
+	if (EFI_ERROR( LastError ) )
 	{
-		return BL_STATUS_GENERIC_ERROR;
+		return LastError;
 	}
 
 	if (PeIsValidImage(Image) == FALSE)
 	{
-		return BL_STATUS_GENERIC_ERROR;
+		return BL_STATUS_INVALID_PE_IMAGE;
 	}
 
 	if (BL_ERROR(BlLdrAlignFileImage(&FileImage, Image)))
@@ -166,7 +177,7 @@ BlLdrLoadPEImage64(
 		return BL_STATUS_GENERIC_ERROR;
 	}
 
-	if ( BL_ERROR( BlLdrImageRelocation(&FileImage, Image) ) )
+	if ( BL_ERROR( BlLdrImageRelocation(&FileImage, Image, 0xFFFF800000000000ULL) ) )
 	{
 		return BL_STATUS_GENERIC_ERROR;
 	}
@@ -175,13 +186,14 @@ BlLdrLoadPEImage64(
 	EFI_IMAGE_NT_HEADERS* ImageNtHeaders = (EFI_IMAGE_NT_HEADERS*)((ULONG64)Image + ImageDosHeader->e_lfanew);
 
 	LoadedImageInfo->Base = (ULONG64)Image;
-	LoadedImageInfo->EntryPoint = (ULONG64)Image + (ULONG64)ImageNtHeaders->OptionalHeader.AddressOfEntryPoint;
+	LoadedImageInfo->EntryPoint = (ULONG64)ImageNtHeaders->OptionalHeader.AddressOfEntryPoint;
+	LoadedImageInfo->VirtualBase = (ULONG64)ImageNtHeaders->OptionalHeader.ImageBase;
 	LoadedImageInfo->Size = (ULONG64)ImageNtHeaders->OptionalHeader.SizeOfImage;
 
 	return BL_STATUS_OK;
 }
 
-BL_STATUS
+EFI_STATUS
 BLAPI
 BlLdrAlignFileImage(
 	_In_    PBL_LDR_FILE_IMAGE FileImage,
@@ -195,7 +207,7 @@ BlLdrAlignFileImage(
 
 	if (PeIsValidImage(Image) == FALSE)
 	{
-		return BL_STATUS_GENERIC_ERROR;
+		return BL_STATUS_INVALID_PE_IMAGE;
 	}
 
 	EFI_IMAGE_DOS_HEADER* ImageDosHeader = (EFI_IMAGE_DOS_HEADER*)Image;
@@ -214,37 +226,46 @@ BlLdrAlignFileImage(
 	{
 		EFI_IMAGE_SECTION_HEADER* CurrentSection = &FileSectionHeader[i];
 
-		EFI_PHYSICAL_ADDRESS SectionAddress = (EFI_PHYSICAL_ADDRESS)Image + (EFI_PHYSICAL_ADDRESS)CurrentSection->VirtualAddress;
-		UINT8* SectionSource				= FileImage->File + CurrentSection->PointerToRawData;
+		PVOID SectionAddress = (PVOID)(ULONG64)((EFI_PHYSICAL_ADDRESS)Image + (EFI_PHYSICAL_ADDRESS)CurrentSection->VirtualAddress);
+		PVOID SectionSource  = FileImage->File + CurrentSection->PointerToRawData;
 
-		if (CurrentSection->SizeOfRawData > 0)
+		ULONG32 Raw = CurrentSection->SizeOfRawData;
+		ULONG32 Virtual = CurrentSection->Misc.VirtualSize;
+
+		if (Raw > 0)
 		{
 			CopyMem(
-				(PVOID)(UINTN)SectionAddress,
-				(PVOID)(UINTN)SectionSource,
+				SectionAddress,
+				SectionSource,
 				CurrentSection->SizeOfRawData
 			);
 		}
+
+		if (Virtual > Raw)
+		{
+			SetMem((UINT8*)SectionAddress + Raw, Virtual - Raw, 0);
+		}
 	}
 
-	return BL_STATUS_OK;
+	return EFI_SUCCESS;
 }
 
-BL_STATUS
+EFI_STATUS
 BLAPI
 BlLdrImageRelocation(
 	_In_    PBL_LDR_FILE_IMAGE FileImage,
-	_Inout_ PBYTE Image
+	_Inout_ PBYTE Image,
+	_In_	ULONG64 RuntimeVA
 )
 {
 	if (!Image || !FileImage)
 	{
-		return BL_STATUS_INVALID_PARAMETER;
+		return EFI_INVALID_PARAMETER;
 	}
 
 	if (PeIsValidImage(Image) == FALSE)
 	{
-		return BL_STATUS_GENERIC_ERROR;
+		return BL_STATUS_INVALID_PE_IMAGE;
 	}
 
 	EFI_IMAGE_DOS_HEADER* ImageDosHeader = (EFI_IMAGE_DOS_HEADER*)Image;
@@ -280,29 +301,29 @@ BlLdrImageRelocation(
 				UINT16 DataType = DataToFix[i] >> 12;
 				switch (DataType)
 				{
-				case EFI_IMAGE_REL_BASED_ABSOLUTE:
-				{
-					break;
-				}
-
-				case EFI_IMAGE_REL_BASED_DIR64:
-				{
-					if ((UINT64)Image > ImageNtHeaders->OptionalHeader.ImageBase)
+					case EFI_IMAGE_REL_BASED_ABSOLUTE:
 					{
-						*((UINT64*)((UINT8*)Page + (DataToFix[i] & EFI_PAGE_MASK))) += RelativeOffset;
+						break;
 					}
-					else
-					{
-						*((UINT64*)((UINT8*)Page + (DataToFix[i] & EFI_PAGE_MASK))) -= RelativeOffset;
-					}
-					break;
-				}
 
-				default:
-				{
-					return BL_STATUS_GENERIC_ERROR;
-					break;
-				}
+					case EFI_IMAGE_REL_BASED_DIR64:
+					{
+						if ((UINT64)Image > ImageNtHeaders->OptionalHeader.ImageBase)
+						{
+							*((UINT64*)((UINT8*)Page + (DataToFix[i] & EFI_PAGE_MASK))) += RelativeOffset;
+						}
+						else
+						{
+							*((UINT64*)((UINT8*)Page + (DataToFix[i] & EFI_PAGE_MASK))) -= RelativeOffset;
+						}
+						break;
+					}
+
+					default:
+					{
+						return BL_STATUS_GENERIC_ERROR;
+						break;
+					}
 				}
 
 			}
@@ -313,5 +334,5 @@ BlLdrImageRelocation(
 		}
 	}
 
-	return BL_STATUS_OK;
+	return EFI_SUCCESS;
 }

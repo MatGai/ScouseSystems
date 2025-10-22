@@ -136,6 +136,10 @@ PPFN_ENTRY SsPfn;
 ULONG64    SsPfnCount;
 ULONG64    SsPfnFreeHead;
 
+#define PLM4_INDEX( va )  ( ( (ULONG64)(va) >> 39 ) & 0x1FF )
+#define PDPT_INDEX( va )  ( ( (ULONG64)(va) >> 30 ) & 0x1FF )
+#define PD_INDEX( va )    ( ( (ULONG64)(va) >> 21 ) & 0x1FF )
+#define PT_INDEX( va )    ( ( (ULONG64)(va) >> 12 ) & 0x1FF )
 
 #define DEFAULT_PAGE_SIZE 0x1000
 #define LARGE_PAGE_SIZE   0x200000
@@ -158,7 +162,7 @@ ULONG64    SsPfnFreeHead;
 
 #define DIRECT_MAP_BASE HIGH_MEMORY_START
 
-#define KERNEL_VA_BASE HIGH_MEMORY_START + (LARGEST_PAGE_SIZE * 100)
+#define KERNEL_VA_BASE 0xFFFFFFFF80000000ULL
 
 STATIC ULONG64 __pml4, __pdpt, __pd, __pt;
 
@@ -204,6 +208,28 @@ PhysicalToVirtual(
     return (VOID*)(DIRECT_MAP_BASE + PhysicalAddress);
 }
 
+STATIC
+__forceinline
+ULONG64
+BLAPI
+EntryAddress(
+    _In_ ULONG64 Entry
+)
+{
+    return Entry & 0x000FFFFFFFFFF000ULL;
+}
+
+STATIC 
+__forceinline
+ULONG64
+BLAPI
+MakeEntry(
+    _In_ ULONG64 Address,
+    _In_ ULONG64 Flags
+)
+{
+    return (Address & 0x000FFFFFFFFFF000ULL) | (Flags & ~0xFFFULL);
+}
 
 ULONG64
 BLAPI
@@ -290,18 +316,25 @@ MapPage(
     ULONG64 paddr, 
     ULONG64 flags
 )
+// had issues with this, I was trying to get the virtual address of physical addresses, when paging was still not setup. 
+// We are still in direct mapping where phsyical address = virtual!
 {
-    // Decompose vaddr into indices:
-    //UINT64 pml4_index = (vaddr >> 39) & 0x1FF;
-    //UINT64 pdpt_index = (vaddr >> 30) & 0x1FF;
-    //UINT64 pd_index = (vaddr >> 21) & 0x1FF;
-    //UINT64 pt_index = (vaddr >> 12) & 0x1FF;
+    // Decompose vaddr to get table indexs
+    ULONG64 pml4_index = PLM4_INDEX( vaddr );
+    ULONG64 pdpt_index = PDPT_INDEX( vaddr );
+    ULONG64 pd_index   = PD_INDEX( vaddr );
+    ULONG64 pt_index   = PT_INDEX( vaddr );
+
+
+    Print(L"vaddr %p, paddr %p, size %p\n", vaddr, paddr, 0x1000);
+    Print(L"plm4indx %p, pdptindx %p, pdindx %p, ptindx %p\n", pml4_index, pdpt_index, pd_index, pt_index);
+
 
     PVIRT_ADDR_T VirtualAddress = { (PVOID)vaddr };
 
-    PPML4E Pml4e = ((PPML4E)&gPML4[VirtualAddress->Plm4Index]);
-    PPDPTE PdptTable;
-    if (!(Pml4e->Present)) 
+    ULONG64* Pml4e = (ULONG64*)(ULONG64)gPML4;
+    ULONG64* PdptTable;
+    if (!(Pml4e[pml4_index] & FLAG_PRESENT))
     {
         ULONG64 PdptPhysical = SsGetFreePhysicalPage();
         if (!PdptPhysical)
@@ -309,54 +342,53 @@ MapPage(
             return EFI_OUT_OF_RESOURCES;
         }
 
-        PVOID PdptVirtual = PhysicalToVirtual(PdptPhysical);
-        ZeroMem((PVOID)PdptVirtual, DEFAULT_PAGE_SIZE);
+        //PVOID PdptVirtual = PhysicalToVirtual(PdptPhysical);
+        ZeroMem((PVOID)(ULONG64)PdptPhysical, DEFAULT_PAGE_SIZE);
 
-        Pml4e->Value = (PdptPhysical & 0xFFFFFFFFFFFFF000ULL) | FLAG_PRESENT | FLAG_RW;
+        Pml4e[pml4_index] = MakeEntry(PdptPhysical, FLAG_PRESENT | FLAG_RW);
 
         mfence();
     }
-    PdptTable = (PPDPTE)PhysicalToVirtual(Pml4e->Pfn << PAGE_SHIFT);
+    PdptTable = (ULONG64*)(ULONG64)EntryAddress(Pml4e[pml4_index]);
 
-    PPDPTE Pdpe = &PdptTable[VirtualAddress->PdptIndex];
-    PPDE PdTable;
-    if (!(Pdpe->Present)) 
+    ULONG64* Pdpe = &PdptTable[pdpt_index];
+    ULONG64* PdTable;
+    if (!(*Pdpe & FLAG_PRESENT)) 
     {
         ULONG64 PdPhysical = SsGetFreePhysicalPage();
         if (!PdPhysical)
         {
             return EFI_OUT_OF_RESOURCES;
         }
-        PVOID PdVirtual = PhysicalToVirtual(PdPhysical);
-        ZeroMem(PdVirtual, DEFAULT_PAGE_SIZE);
-
-        Pdpe->Value = (PdPhysical & 0xFFFFFFFFFFFFF000ULL) | FLAG_PRESENT | FLAG_RW;
-
+        //PVOID PdVirtual = PhysicalToVirtual(PdPhysical);
+        ZeroMem((PVOID)(ULONG64)PdPhysical, DEFAULT_PAGE_SIZE);
+        *Pdpe = MakeEntry(PdPhysical, FLAG_PRESENT | FLAG_RW );
         mfence();
     }
-    PdTable = (PPDE)PhysicalToVirtual(Pdpe->Pfn << PAGE_SHIFT);
+    PdTable = (ULONG64*)(ULONG64)EntryAddress(*Pdpe);/*(PPDE)PhysicalToVirtual(Pdpe->Pfn << PAGE_SHIFT);*/
 
-    PPDE Pde = &PdTable[VirtualAddress->PdIndex];
-    PPTE PtTable;
-    if (!(Pde->Present)) 
+    ULONG64* Pde = &PdTable[pd_index];
+    ULONG64* PtTable;
+    if (!(*Pde & FLAG_PRESENT)) 
     {
         ULONG64 PtPhysical = SsGetFreePhysicalPage();
         if (!PtPhysical)
         {
             return EFI_OUT_OF_RESOURCES;
         }
-        PVOID PtVirtual = PhysicalToVirtual(PtPhysical);
-        ZeroMem(PtVirtual, DEFAULT_PAGE_SIZE);
 
-        Pde->Value = (PtPhysical & 0xFFFFFFFFFFFFF000ULL) | FLAG_PRESENT | FLAG_RW;
-
+        /*PVOID PtVirtual = PhysicalToVirtual(PtPhysical);*/
+        ZeroMem((PVOID)(ULONG64)PtPhysical, DEFAULT_PAGE_SIZE);
+        *Pde = MakeEntry(PtPhysical, FLAG_PRESENT | FLAG_RW);
         mfence();
     }
-    PtTable = (PPTE)PhysicalToVirtual(Pde->Pfn << PAGE_SHIFT);
+    PtTable = (ULONG64*)(ULONG64)EntryAddress(*Pde);
 
-    PPTE Pte = &PtTable[VirtualAddress->PtIndex];
-    Pte->Value = (paddr & 0xFFFFFFFFFFFFF000ULL) | flags;
-    tlbflush((VOID*)vaddr);
+    // Make PS is not set at PT level, only PD/PT entries use PS bit for large pages
+    PtTable[pt_index] = MakeEntry(paddr, flags & ~FLAG_PS);
+
+    // not really needed as we are not modifying cr3 yet.
+    //tlbflush((VOID*)(ULONG64)vaddr);
     mfence();
     return EFI_SUCCESS;
 }
@@ -371,85 +403,76 @@ MapLargePage(
     ULONG64 flags
 )
 {
-    VIRT_ADDR_T VirtualAddress = { .Value = (PVOID)vaddr };
+    ULONG64 pml4_index = PLM4_INDEX(vaddr);
+    ULONG64 pdpt_index = PDPT_INDEX(vaddr);
+    ULONG64 pd_index   = PD_INDEX(vaddr);
+    ULONG64 pt_index   = PT_INDEX(vaddr);
 
-    Print(L"\nHelp 0 vaddr %p, va %p\n", vaddr, VirtualAddress);
+    Print(L"vaddr %p, paddr %p, size %p\n", vaddr, paddr, size);
+    Print(L"plm4indx %p, pdptindx %p, pdindx %p, ptindx %p\n", pml4_index, pdpt_index, pd_index, pt_index);
+
     getc();
 
-    Print(L"Plm4e %p\n", VirtualAddress.Plm4Index);
-    getc();
-
-    PPML4E Pml4e = &gPML4[VirtualAddress.Plm4Index];
-    if (!(Pml4e->Present))
+    ULONG64* Pml4 = (ULONG64*)(ULONG64)gPML4;
+    ULONG64* PdpTable;
+    if (!(Pml4[pml4_index] & FLAG_PRESENT))
     {
-
-        Print(L"Help 0.1\n");
-        getc();
-
         ULONG64 PdptPhysical = SsGetFreePhysicalPage();
         if (!PdptPhysical)
         {
             return EFI_OUT_OF_RESOURCES;
         }
+        //PVOID PdptVirtual = PhysicalToVirtual(PdptPhysical);
+        ZeroMem((PVOID)(ULONG64)PdptPhysical, DEFAULT_PAGE_SIZE);
 
-        Print(L"Help 0.2 %p\n", PdptPhysical);
-        getc();
 
-        PVOID PdptVirtual = PhysicalToVirtual(PdptPhysical);
-        ZeroMem(PdptVirtual, DEFAULT_PAGE_SIZE);
+        Pml4[pml4_index] = MakeEntry(PdptPhysical, FLAG_PRESENT | FLAG_RW);
 
-        Print(L"Help 0.3\n");
-        getc();
-
-        Pml4e->Value = (PdptPhysical & 0xFFFFFFFFFFFFF000ULL) | FLAG_PRESENT | FLAG_RW;
-
-        Print(L"Help 0.4\n");
-        getc();
-
-        tlbflush(PdptVirtual);
         mfence();
-
-        Print(L"Help 0.5\n");
-        getc();
     }
 
-    PPDPTE PdptTable = (PPDPTE)PhysicalToVirtual(Pml4e->Pfn << PAGE_SHIFT);
+    PdpTable = (ULONG64*)(ULONG64)EntryAddress(Pml4[pml4_index]);
 
-    Print(L"Help 1\n");
-    getc();
 
     if (size == LARGEST_PAGE_SIZE)
     {
-        PPDPTE Pdpe = &PdptTable[VirtualAddress.PdptIndex];
-        Pdpe->Value = (paddr & ~(LARGEST_PAGE_SIZE - 1ULL)) | flags | FLAG_PS;
+        if ((paddr & (LARGEST_PAGE_SIZE - 1ULL)) != 0 || (vaddr & (LARGEST_PAGE_SIZE - 1)) != 0)
+        {
+            DBG_INFO(L"Physical address not aligned for 1GB page");
+            getc();
+            return EFI_INVALID_PARAMETER;
+        }
+
+        PdpTable[pdpt_index] = MakeEntry(paddr, (flags | FLAG_PS));
+        mfence();
         return EFI_SUCCESS;
     }
 
-    PPDPTE Pdpe = &PdptTable[VirtualAddress.PdptIndex];
-    if (!(Pdpe->Present))
+    // PDPT -> PD
+    ULONG64* Pdpe = &PdpTable[pdpt_index];
+    if (!(*Pdpe & FLAG_PRESENT))
     {
         ULONG64 PdPhysical = SsGetFreePhysicalPage();
         if (!PdPhysical)
         {
             return EFI_OUT_OF_RESOURCES;
         }
-        PVOID PdVirtual = PhysicalToVirtual(PdPhysical);
-        ZeroMem(PdVirtual, DEFAULT_PAGE_SIZE);
-
-        Pdpe->Value = (PdPhysical & 0xFFFFFFFFFFFFF000ULL) | FLAG_PRESENT | FLAG_RW;
-
-        tlbflush(PdVirtual);
+        //PVOID PdVirtual = PhysicalToVirtual(PdPhysical);
+        ZeroMem((PVOID)(ULONG64)PdPhysical, DEFAULT_PAGE_SIZE);
+        *Pdpe = MakeEntry(PdPhysical, FLAG_PRESENT | FLAG_RW);
         mfence();
     }
 
-    Print(L"Help 2\n");
-    getc();
+    ULONG64* Pd = (ULONG64*)(ULONG64)EntryAddress(*Pdpe);
 
     if (size == LARGE_PAGE_SIZE)
     {
-        PPDE PdTable = (PPDE)PhysicalToVirtual(Pdpe->Pfn << PAGE_SHIFT);
-        PPDE Pde = &PdTable[VirtualAddress.PdIndex];
-        Pde->Value = (paddr & ~(LARGE_PAGE_SIZE - 1ULL)) | flags | FLAG_PS;
+        if ((paddr & (LARGE_PAGE_SIZE - 1)) != 0 || (vaddr & (LARGE_PAGE_SIZE - 1)) != 0)
+        {
+            return EFI_INVALID_PARAMETER;
+        }
+        Pd[pd_index] = MakeEntry(paddr, (flags | FLAG_PS));
+        mfence();
         return EFI_SUCCESS;
     }
 
@@ -465,53 +488,30 @@ EFI_STATUS DirectMapRange(
     ULONG64 PhysEnd
 )
 {
-    if ((PhysStart % DEFAULT_PAGE_SIZE) || (PhysEnd % DEFAULT_PAGE_SIZE))
+    if ((PhysStart & DEFAULT_PAGE_SIZE - 1) || (PhysEnd & DEFAULT_PAGE_SIZE - 1) || (PhysStart >= PhysEnd))
     {
         return EFI_INVALID_PARAMETER;
     }
 
-    Print(L"\nPhys start %p, end %p\n", PhysStart, PhysEnd);
-    getc();
-
-    for (UINT64 Phys = PhysStart; Phys < PhysEnd;)
+    ULONG64 Phys = PhysStart;
+    EFI_STATUS Status;
+    while (Phys < PhysEnd)
     {
         ULONG64 Remaining = PhysEnd - Phys;
-        ULONG64 vaddr = DIRECT_MAP_BASE + Phys;
-        EFI_STATUS Status;
+        ULONG64 VA = DIRECT_MAP_BASE + Phys;
 
-        Print(L"Fail 0");
-        getc();
-
-        if ((Phys % LARGEST_PAGE_SIZE) == 0 && Remaining >= LARGEST_PAGE_SIZE)
+        if (((Phys | VA) & (LARGEST_PAGE_SIZE - 1)) == 0 && Remaining >= LARGEST_PAGE_SIZE)
         {
-            Print(L"Fail 1");
-            getc();
-
-            Print(L"vaddr %p, phys %p, remaining %p", vaddr, Phys, Remaining);
-            Status = MapLargePage(vaddr, Phys, LARGEST_PAGE_SIZE, FLAG_PRESENT | FLAG_RW | FLAG_NX);
-
-            Print(L"Fail 1.1");
-            getc();
-
+            Status = MapLargePage(VA, Phys, LARGEST_PAGE_SIZE, FLAG_PRESENT | FLAG_RW | FLAG_NX);
             if (EFI_ERROR(Status))
             {
-                Print(L"Fail 1.2 error");
-                getc();
                 return Status;
             }
-
-            Print(L"Fail 1.3 ");
-            getc();
-
             Phys += LARGEST_PAGE_SIZE;
         }
-        else if ((Phys % LARGE_PAGE_SIZE) == 0 && Remaining >= LARGE_PAGE_SIZE)
+        else if (((Phys | VA) & (LARGE_PAGE_SIZE - 1)) == 0 && Remaining >= LARGE_PAGE_SIZE)
         {
-
-            Print(L"Fail 2");
-            getc();
-
-            Status = MapLargePage(vaddr, Phys, LARGE_PAGE_SIZE, FLAG_PRESENT | FLAG_RW | FLAG_NX);
+            Status = MapLargePage( VA, Phys, LARGE_PAGE_SIZE, FLAG_PRESENT | FLAG_RW | FLAG_NX);
             if (EFI_ERROR(Status))
             {
                 return Status;
@@ -520,23 +520,74 @@ EFI_STATUS DirectMapRange(
         }
         else
         {
-
-            Print(L"Fail 3");
-            getc();
-
-            Status = MapPage(vaddr, Phys, FLAG_PRESENT | FLAG_RW | FLAG_NX);
+            Status = MapPage(VA, Phys, FLAG_PRESENT | FLAG_RW | FLAG_NX);
             if (EFI_ERROR(Status))
             {
                 return Status;
             }
             Phys += DEFAULT_PAGE_SIZE;
         }
-
-        Print(L"Fail 4");
-        getc();
     }
     //ReloadCR3(); // Flush the TLB
     return EFI_SUCCESS;
+}
+
+EFI_STATUS
+BLAPI
+MapKernel(
+    UINT64 KernelPhys, 
+    UINT64 KernelBase
+)
+{
+
+    EFI_IMAGE_DOS_HEADER* ImageDosHeader = (EFI_IMAGE_DOS_HEADER*)KernelPhys;
+    EFI_IMAGE_NT_HEADERS* nt = (EFI_IMAGE_NT_HEADERS*)(KernelPhys + ImageDosHeader->e_lfanew);
+
+    UINT64 hdr = nt->OptionalHeader.SizeOfHeaders;
+    for (UINT64 off = 0; off < hdr; off += 0x1000) 
+    {
+        EFI_STATUS s = MapPage(KernelBase + off, KernelPhys + off, FLAG_PRESENT | FLAG_NX);
+        if (EFI_ERROR(s))
+        {
+            return s;
+        }
+    }
+
+    EFI_IMAGE_SECTION_HEADER* sec = EFI_IMAGE_FIRST_SECTION(nt);
+    for (UINT16 i = 0; i < nt->FileHeader.NumberOfSections; ++i) 
+    {
+        UINT64 vaddr = KernelBase + sec[i].VirtualAddress;
+        UINT64 paddr = KernelPhys + sec[i].VirtualAddress;
+        UINT64 vsize = (sec[i].Misc.VirtualSize + 0xFFF) & ~0xFFFULL;
+
+        UINT64 flags = FLAG_PRESENT;
+        BOOLEAN is_code = (sec[i].Characteristics & EFI_IMAGE_SCN_CNT_CODE) != 0;
+        BOOLEAN is_write = (sec[i].Characteristics & EFI_IMAGE_SCN_MEM_WRITE) != 0;
+        BOOLEAN is_exec = (sec[i].Characteristics & EFI_IMAGE_SCN_MEM_EXECUTE) != 0;
+
+        if (is_write) flags |= FLAG_RW;
+        if (!is_exec) flags |= FLAG_NX; // NX for non-exec
+
+        for (UINT64 off = 0; off < vsize; off += 0x1000)
+        {
+            EFI_STATUS s = MapPage(vaddr + off, paddr + off, flags);
+            if (EFI_ERROR(s))
+            {
+                return s;
+            }
+        }
+    }
+
+    return EFI_SUCCESS;
+}
+
+VOID
+BLAPI
+WalkPhysical(
+    ULONG64 Phys
+)
+{
+
 }
 
 #endif
