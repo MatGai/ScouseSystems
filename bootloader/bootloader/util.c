@@ -6,6 +6,7 @@ getc(
     VOID
 )
 {
+#ifndef _DEBUG_IDA
     EFI_EVENT e[1];
 
     EFI_INPUT_KEY k;
@@ -21,6 +22,7 @@ getc(
     }
 
     return k;
+#endif
 }
 
 INTN

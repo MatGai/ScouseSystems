@@ -9,6 +9,8 @@ Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		QemuDebug|x64 = QemuDebug|x64
 		QemuDebug|x86 = QemuDebug|x86
+		QemuDebugIDA|x64 = QemuDebugIDA|x64
+		QemuDebugIDA|x86 = QemuDebugIDA|x86
 		QemuRun|x64 = QemuRun|x64
 		QemuRun|x86 = QemuRun|x86
 	EndGlobalSection
@@ -17,6 +19,10 @@ Global
 		{389D817B-49FA-4302-8DA6-D1EA6C844E7D}.QemuDebug|x64.Build.0 = QemuDebug|x64
 		{389D817B-49FA-4302-8DA6-D1EA6C844E7D}.QemuDebug|x86.ActiveCfg = QemuDebug|Win32
 		{389D817B-49FA-4302-8DA6-D1EA6C844E7D}.QemuDebug|x86.Build.0 = QemuDebug|Win32
+		{389D817B-49FA-4302-8DA6-D1EA6C844E7D}.QemuDebugIDA|x64.ActiveCfg = QemuDebugIDA|x64
+		{389D817B-49FA-4302-8DA6-D1EA6C844E7D}.QemuDebugIDA|x64.Build.0 = QemuDebugIDA|x64
+		{389D817B-49FA-4302-8DA6-D1EA6C844E7D}.QemuDebugIDA|x86.ActiveCfg = QemuDebugIDA|Win32
+		{389D817B-49FA-4302-8DA6-D1EA6C844E7D}.QemuDebugIDA|x86.Build.0 = QemuDebugIDA|Win32
 		{389D817B-49FA-4302-8DA6-D1EA6C844E7D}.QemuRun|x64.ActiveCfg = QemuRun|x64
 		{389D817B-49FA-4302-8DA6-D1EA6C844E7D}.QemuRun|x64.Build.0 = QemuRun|x64
 		{389D817B-49FA-4302-8DA6-D1EA6C844E7D}.QemuRun|x86.ActiveCfg = QemuRun|Win32
@@ -24,5 +30,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {AF72DC0A-DFB3-4239-8730-A3B8ED283839}
 	EndGlobalSection
 EndGlobal
