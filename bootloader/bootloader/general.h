@@ -18,6 +18,11 @@ extern "C"
         VOID
     );
 
+    VOID
+    _int3(
+        VOID
+    );
+
 #ifdef __cplusplus
 }
 #endif

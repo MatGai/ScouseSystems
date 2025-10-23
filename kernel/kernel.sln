@@ -9,6 +9,8 @@ Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		QemuDebug|x64 = QemuDebug|x64
 		QemuDebug|x86 = QemuDebug|x86
+		QemuDebugIDA|x64 = QemuDebugIDA|x64
+		QemuDebugIDA|x86 = QemuDebugIDA|x86
 		QemuRun|x64 = QemuRun|x64
 		QemuRun|x86 = QemuRun|x86
 	EndGlobalSection
@@ -17,6 +19,10 @@ Global
 		{A4424E1E-D339-4A51-88D0-6E5298531E75}.QemuDebug|x64.Build.0 = QemuDebug|x64
 		{A4424E1E-D339-4A51-88D0-6E5298531E75}.QemuDebug|x86.ActiveCfg = QemuDebug|Win32
 		{A4424E1E-D339-4A51-88D0-6E5298531E75}.QemuDebug|x86.Build.0 = QemuDebug|Win32
+		{A4424E1E-D339-4A51-88D0-6E5298531E75}.QemuDebugIDA|x64.ActiveCfg = QemuDebugIDA|x64
+		{A4424E1E-D339-4A51-88D0-6E5298531E75}.QemuDebugIDA|x64.Build.0 = QemuDebugIDA|x64
+		{A4424E1E-D339-4A51-88D0-6E5298531E75}.QemuDebugIDA|x86.ActiveCfg = QemuDebugIDA|Win32
+		{A4424E1E-D339-4A51-88D0-6E5298531E75}.QemuDebugIDA|x86.Build.0 = QemuDebugIDA|Win32
 		{A4424E1E-D339-4A51-88D0-6E5298531E75}.QemuRun|x64.ActiveCfg = QemuRun|x64
 		{A4424E1E-D339-4A51-88D0-6E5298531E75}.QemuRun|x64.Build.0 = QemuRun|x64
 		{A4424E1E-D339-4A51-88D0-6E5298531E75}.QemuRun|x86.ActiveCfg = QemuRun|Win32

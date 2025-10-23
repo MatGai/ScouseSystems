@@ -2,6 +2,7 @@
 #include "image.h"
 #include "pagemanager.h"
 #include "control.h"
+#include "special.h"
 
 typedef struct _BOOT_INFO
 {
@@ -48,9 +49,19 @@ UefiMain(
     }
 
     Print(L"handle-> %p", LoadedIamge->ImageBase);
-    //__debugbreak();
+   
+    bldebugbreak();
 
     gST->ConOut->ClearScreen(gST->ConOut);
+
+    if(__cpuidsupport() == TRUE )
+    {
+        Print(L"CPU supports CPUID\n");
+    }
+    else
+    {
+        Print(L"CPU does not support CPUID\n");
+    }
 
     EFI_TIME time;
     gRT->GetTime(&time, NULL);
@@ -278,6 +289,8 @@ UefiMain(
 
     Print(L"CR3 set to %p\n", Pml4Physical);
     getc();
+    
+    bldebugbreak();
 
     __writecr3(Pml4Physical);
 

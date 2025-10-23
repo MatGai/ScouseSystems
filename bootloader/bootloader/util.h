@@ -1,6 +1,21 @@
 #ifndef UTIL_H
 #define UTIL_H
 #include "boot.h"
+#include "general.h"
+
+
+__forceinline
+VOID
+BLAPI
+bldebugbreak(
+    VOID
+)
+{
+#ifdef _DEBUG_IDA
+    _int3();
+#endif // _DEBUG_IDA
+};
+
 
 /**
 * Pauses process essentially until a keyboard event has occured and returns key pressed

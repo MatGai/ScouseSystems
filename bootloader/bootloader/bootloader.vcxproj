@@ -345,6 +345,7 @@
     <ClInclude Include="image.h" />
     <ClInclude Include="pagemanager.h" />
     <ClInclude Include="pe.h" />
+    <ClInclude Include="special.h" />
     <ClInclude Include="status.h" />
     <ClInclude Include="stdint.h" />
     <ClInclude Include="util.h" />
@@ -354,6 +355,11 @@
       <FileType>Document</FileType>
       <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='QemuDebug|x64'">false</GenerateDebugInformation>
       <GenerateDebugInformation Condition="'$(Configuration)|$(Platform)'=='QemuDebugIDA|x64'">false</GenerateDebugInformation>
+    </MASM>
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="special.masm">
+      <FileType>Document</FileType>
     </MASM>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

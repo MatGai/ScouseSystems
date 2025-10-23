@@ -13,6 +13,7 @@ PUBLIC _mfence
 PUBLIC _clflush
 ;PUBLIC _cpuid
 PUBLIC _tlbflush
+PUBLIC _int3
 
 
 ; ########################################
@@ -87,5 +88,12 @@ _tlbflush PROC
     ret
 
 _tlbflush ENDP
+
+_int3 PROC
+    int 3
+    ret
+_int3 ENDP
+
+
 
 END
