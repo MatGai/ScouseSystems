@@ -89,6 +89,9 @@
     <ClInclude Include="general.h">
       <Filter>registers\general</Filter>
     </ClInclude>
+    <ClInclude Include="special.h">
+      <Filter>registers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="control.masm">
@@ -96,6 +99,9 @@
     </MASM>
     <MASM Include="general.masm">
       <Filter>registers\general</Filter>
+    </MASM>
+    <MASM Include="special.masm">
+      <Filter>registers</Filter>
     </MASM>
   </ItemGroup>
 </Project>

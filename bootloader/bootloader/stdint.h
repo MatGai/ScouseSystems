@@ -1,4 +1,5 @@
-#pragma once
+#ifndef STDINT_H
+#define STDINT_H
 
 //
 // standard types and defines
@@ -54,3 +55,5 @@ typedef WORD* PWORD;
 #define _Out_opt_
 
 #define offsetof(type, member) ((unsigned long long) &(((type*)0)->member))
+
+#endif // !STDINT_H

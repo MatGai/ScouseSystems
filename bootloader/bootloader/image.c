@@ -9,7 +9,7 @@ BlLdrLoadPEImageFile(
 	_Inout_ PBL_LDR_FILE_IMAGE FileImageData
 )
 {
-	EFI_STATUS LastError = NULL;
+	EFI_STATUS LastError = (EFI_STATUS)NULL;
 
 	if (ImagePath == NULL || FileImageData == NULL)
 	{
@@ -143,7 +143,7 @@ BlLdrLoadPEImage64(
 		return EFI_INVALID_PARAMETER;
 	}
 
-	EFI_STATUS LastError = NULL;
+	EFI_STATUS LastError = (EFI_STATUS)NULL;
 
 	BL_LDR_FILE_IMAGE FileImage;
 	//EfiZeroMemory(&FileImage, sizeof(BL_LDR_FILE_IMAGE));
@@ -160,7 +160,7 @@ BlLdrLoadPEImage64(
 	}
 
 	PBYTE Image = NULL;
-	EFI_PHYSICAL_ADDRESS ImagePhysical = NULL;
+	EFI_PHYSICAL_ADDRESS ImagePhysical = (EFI_PHYSICAL_ADDRESS)NULL;
 	LastError = BlLdrAllocatePEImagePages(&FileImage, &Image, &ImagePhysical);
 	if (EFI_ERROR( LastError ) )
 	{

@@ -1,5 +1,6 @@
 #ifndef UTIL_H
 #define UTIL_H
+
 #include "boot.h"
 #include "general.h"
 
@@ -7,7 +8,7 @@
 __forceinline
 VOID
 BLAPI
-bldebugbreak(
+BlDbgBreak(
     VOID
 )
 {
@@ -15,7 +16,6 @@ bldebugbreak(
     _int3();
 #endif // _DEBUG_IDA
 };
-
 
 /**
 * Pauses process essentially until a keyboard event has occured and returns key pressed
@@ -90,9 +90,9 @@ strfmt(
 
 VOID
 AsciiToUnicode(
-    IN  CONST CHAR8* AsciiString,
-    OUT CHAR16*      UnicodeString,
-    IN  UINTN        UnicodeBufferSize  // number of CHAR16 elements
+    _In_  CONST CHAR8*  AsciiString,
+    _Out_ CHAR16*       UnicodeString,
+    _In_  ULONG64       UnicodeBufferSize  // number of CHAR16 elements
 );
 
 char* strchr(

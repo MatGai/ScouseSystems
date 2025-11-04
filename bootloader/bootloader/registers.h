@@ -20,6 +20,5 @@
 //
 #define BIT_CLEAR( val, bit ) ( ( (ULONG64)(val) ) &= ~( (ULONG64)(bit) )  )
 
-
 #endif
 

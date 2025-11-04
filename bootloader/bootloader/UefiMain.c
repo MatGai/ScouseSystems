@@ -17,13 +17,41 @@ const UINT32 _gUefiDriverRevision = 0x0;
 * @brief Needed for VisualUefi for some reason?
 */
 EFI_STATUS
-EFIAPI 
+EFIAPI
 UefiUnload(
     EFI_HANDLE ImageHandle
 )
 {
     return EFI_SUCCESS;
-}
+};
+
+EFI_STATUS
+BLAPI
+InitalSetup(
+    EFI_HANDLE* ImageHandle
+)
+{
+    EFI_LOADED_IMAGE* LoadedIamge = NULL;
+    EFI_STATUS err = gBS->HandleProtocol(ImageHandle, &gEfiLoadedImageProtocolGuid, &LoadedIamge);
+
+    if (EFI_ERROR(err))
+    {
+        return err;
+    }
+
+    DBG_INFO(L"handle-> %p", LoadedIamge->ImageBase);
+
+    BlDbgBreak();
+
+    gST->ConOut->ClearScreen(gST->ConOut);
+
+    EFI_TIME time;
+    gRT->GetTime(&time, NULL);
+
+    Print(L"%02d/%02d/%04d ----- %02d:%02d:%0d.%d\r\n", time.Day, time.Month, time.Year, time.Hour, time.Minute, time.Second, time.Nanosecond);
+    
+    return EFI_SUCCESS;
+};
 
 /**
 * @brief The entry point for the UEFI application.
@@ -40,36 +68,27 @@ UefiMain(
     EFI_SYSTEM_TABLE* SystemTable
 )
 {
-    EFI_LOADED_IMAGE* LoadedIamge = NULL;
-    EFI_STATUS err = gBS->HandleProtocol(ImageHandle, &gEfiLoadedImageProtocolGuid, &LoadedIamge);
 
-    if (EFI_ERROR(err))
+    EFI_STATUS Status;
+    Status = InitalSetup(&ImageHandle);
+
+    //DBG_ERROR(Status, L"Hello\n");
+    DBG_INFO(L"Hello %s\n", "sir");
+    getc();
+
+    if (EFI_ERROR(Status))
     {
-        return 0;
+        DBG_ERROR(Status, L"Initial setup failed\n");
+        getc();
+        return Status;
     }
 
-    Print(L"handle-> %p", LoadedIamge->ImageBase);
-   
-    bldebugbreak();
 
-    gST->ConOut->ClearScreen(gST->ConOut);
-
-    if(__cpuidsupport() == TRUE )
-    {
-        Print(L"CPU supports CPUID\n");
-    }
-    else
-    {
-        Print(L"CPU does not support CPUID\n");
-    }
-
-    EFI_TIME time;
-    gRT->GetTime(&time, NULL);
-
-    Print(L"%02d/%02d/%04d ----- %02d:%02d:%0d.%d\r\n", time.Day, time.Month, time.Year, time.Hour, time.Minute, time.Second, time.Nanosecond);
 
     if ( EFI_ERROR(BlInitFileSystem()) )
     {
+        DBG_ERROR(BlGetLastFileError(), L"File system init failed\n");
+        getc();
         return 1;
     }
 
@@ -81,44 +100,40 @@ UefiMain(
     {
         if ( EFI_ERROR(FILE_SYSTEM_STATUS) )
         {
-            Print(L"[ %r ] Failed to get root directory of current FS\n", BlGetLastFileError());
+            DBG_ERROR(BlGetLastFileError(), L"Failed to get root directory of current FS\n");
         }
     }
 
-    getc();
-
-    Print(L"\nLooking for 'kernel.exe' file pointer\n");
+    DBG_INFO(L"\nLooking for 'kernel.exe' file pointer\n");
     EFI_FILE_PROTOCOL* File = NULL;
     if (!EFI_ERROR( BlFindFile(L"kernel.exe", &File) ))
     {
         CHAR16* Buffer;
         if (BlGetFileName(File, &Buffer))
         {
-            Print(L"Got the file -> %s\n\n", Buffer);
+            DBG_INFO(L"Got the file -> %s\n\n", Buffer);
         }
         FreePool(Buffer);
     }
     else
     {
-        Print(L"Failed to find 'kernel.exe' file pointer\n");
+        DBG_ERROR(L"Failed to find 'kernel.exe' file pointer\n");
         getc();
         return EFI_LOAD_ERROR;
     }
-
-    getc();
 
     BlGetRootDirectory(NULL);
 
     BL_LDR_LOADED_IMAGE_INFO FileInfo;
 
-    DBG_INFO(L"starting load kernel\n");
+    DBG_INFO(L"Starting load kernel\n");
 
     BlLdrLoadPEImage64(L"kernel.exe", &FileInfo);
 
     typedef int(__cdecl* KernelEntry)(EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL* ConOut, PBOOT_INFO BootInfo);
     KernelEntry EntryPoint = (KernelEntry)FileInfo.EntryPoint;
 
-    Print(L"Kernel Image base %p, entry point %p, va %p\n", FileInfo.Base, FileInfo.EntryPoint, FileInfo.VirtualBase);
+    DBG_INFO(L"Kernel Image base %p, entry point %p, va %p\n", FileInfo.Base, FileInfo.EntryPoint, FileInfo.VirtualBase);
 
     //
     // now we need to get details of memory, luckily efi provides this to us.
@@ -256,17 +271,18 @@ UefiMain(
         Desc = SsGetNextDescriptor( Desc, SystemMemoryMap.DescriptorSize );
     }
 
-    Print(L"PFN free head -> %p\n", SsPfnFreeHead);
-    Print(L"PFN count -> %d\n", SsPfnCount);
+    DBG_INFO(L"PFN free head -> %p\n", SsPfnFreeHead);
+    DBG_INFO(L"PFN count -> %d\n", SsPfnCount);
 
     ULONG64 Pml4Physical = SsPagingInit();
     if (!Pml4Physical)
     {
+        DBG_ERROR(L"Failed to allogcate Pml4 a physical address");
         getc();
         return 1;
     }
 
-    Print(L"PML4 Physical -> %p, MaxAddress -> %p\n", Pml4Physical, MaxAddress);
+    DBG_INFO(L"PML4 Physical -> %p, MaxAddress -> %p\n", Pml4Physical, MaxAddress);
     getc();
 
     EFI_STATUS MapStatus = DirectMapRange(0, MaxAddress);
@@ -277,34 +293,29 @@ UefiMain(
         return 1;
     }
 
-    Print(L"Direct mapped range 0x%p - 0x%p\n", DIRECT_MAP_BASE, MaxAddress);
+    DBG_INFO(L"Direct mapped range 0x%p - 0x%p\n", DIRECT_MAP_BASE, MaxAddress);
     getc();
 
     EFI_STATUS s = MapKernel(FileInfo.Base, KERNEL_VA_BASE);
     DBG_ERROR(s);
 
-    Print(L"Kernel mapped to %p, entry rva %p\n", KERNEL_VA_BASE, KERNEL_VA_BASE + FileInfo.EntryPoint);
-    getc();
-
-
-    Print(L"CR3 set to %p\n", Pml4Physical);
+    DBG_INFO(L"Kernel mapped to %p, entry rva %p\n", KERNEL_VA_BASE, KERNEL_VA_BASE + FileInfo.EntryPoint);
+    DBG_INFO(L"CR3 set to %p\n", Pml4Physical);
     getc();
     
-    bldebugbreak();
+    BlDbgBreak();
 
     __writecr3(Pml4Physical);
 
-
     BOOT_INFO BootInfo = { DIRECT_MAP_BASE, Pml4Physical };
-
 
     typedef int(__cdecl* KernelEntry)(EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL*, PBOOT_INFO);
     KernelEntry Entry = (KernelEntry)(UINTN)(KERNEL_VA_BASE + FileInfo.EntryPoint);
 
     int ret = Entry(gST->ConOut, &BootInfo);
 
-    Print(L"EntryPoint returned %d\n", ret);
-    Print(L"Kernel base %p\n", FileInfo.Base);
+    DBG_INFO(L"EntryPoint returned %d\n", ret);
+    DBG_INFO(L"Kernel base %p\n", FileInfo.Base);
     getc();
 
     return EFI_SUCCESS;

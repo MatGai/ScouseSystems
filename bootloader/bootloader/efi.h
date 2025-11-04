@@ -1,4 +1,5 @@
-
+#ifndef _EFI_H
+#define _EFI_H
 
 #include <Uefi.h>
 #include <Library/UefiLib.h>
@@ -17,3 +18,5 @@
 typedef EFI_SYSTEM_TABLE* PEFI_SYSTEM_TABLE;
 typedef EFI_HANDLE* PEFI_HANDLE;
 typedef EFI_FILE_IO_INTERFACE* PEFI_FILE_IO_INTERFACE;
+
+#endif // !_EFI_H

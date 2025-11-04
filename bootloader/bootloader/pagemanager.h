@@ -296,7 +296,7 @@ SsPagingInit(
     {
         DBG_INFO(L"No free memory!");
         getc();
-        return NULL;
+        return (ULONG64)NULL;
     }
 
     gPML4 =  (ULONG64*)(PVOID)FreePage;
@@ -433,7 +433,6 @@ MapLargePage(
 
     PdpTable = (ULONG64*)(ULONG64)EntryAddress(Pml4[pml4_index]);
 
-
     if (size == LARGEST_PAGE_SIZE)
     {
         if ((paddr & (LARGEST_PAGE_SIZE - 1ULL)) != 0 || (vaddr & (LARGEST_PAGE_SIZE - 1)) != 0)
@@ -539,7 +538,6 @@ MapKernel(
     UINT64 KernelBase
 )
 {
-
     EFI_IMAGE_DOS_HEADER* ImageDosHeader = (EFI_IMAGE_DOS_HEADER*)KernelPhys;
     EFI_IMAGE_NT_HEADERS* nt = (EFI_IMAGE_NT_HEADERS*)(KernelPhys + ImageDosHeader->e_lfanew);
 
@@ -590,4 +588,4 @@ WalkPhysical(
 
 }
 
-#endif
+#endif // !PAGEMANAGER_H

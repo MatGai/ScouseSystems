@@ -1,9 +1,8 @@
-#pragma once
+#ifndef PE_H
+#define PE_H
 
 #include "stdint.h"
-
 #include <IndustryStandard/PeImage.h>
-
 
 typedef EFI_IMAGE_DOS_HEADER* PEFI_IMAGE_DOS_HEADER;
 
@@ -60,3 +59,5 @@ BOOLEAN
 PeIsValidImage(
 	_In_ PBYTE PE
 );
+
+#endif // !PE_H

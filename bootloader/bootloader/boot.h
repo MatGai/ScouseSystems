@@ -1,4 +1,5 @@
-#pragma once
+#ifndef BOOT_H
+#define BOOT_H
 
 #include <Uefi.h>
 #include <Library/UefiLib.h>
@@ -18,5 +19,5 @@
 #include "bdefs.h"
 #include "status.h"
 
-
+#endif // !BOOT_H
 

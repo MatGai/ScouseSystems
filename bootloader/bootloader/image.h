@@ -11,8 +11,6 @@ typedef struct _BL_LDR_LOADED_IMAGE_INFO
 	ULONG64 Size;
 	ULONG64 VirtualBase;
 	ULONG64 EntryPoint;
-
-
 } BL_LDR_LOADED_IMAGE_INFO, *PBL_LDR_LOADED_IMAGE_INFO;
 
 typedef struct _BL_LDR_FILE_IMAGE
@@ -58,6 +56,5 @@ BlLdrLoadPEImage64(
 	_In_ PCWSTR ImagePath,
 	_Inout_ PBL_LDR_LOADED_IMAGE_INFO LoadedImageInfo
 );
-
 
 #endif // !IMAGE_H

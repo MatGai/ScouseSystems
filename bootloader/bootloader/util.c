@@ -34,7 +34,7 @@ strlength(
     if (str == NULL)
         return 0;
 
-    CHAR16* p = str;
+    CONST CHAR16* p = str;
     while (*p != '\0')
         p++;
 

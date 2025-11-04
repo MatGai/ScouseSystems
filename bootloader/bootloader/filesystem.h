@@ -1,5 +1,5 @@
-#ifndef _FILESYSTEM_H
-#define _FILESYSTEM_H
+#ifndef FILESYSTEM_H
+#define FILESYSTEM_H
 
 #include "boot.h"
 #include "util.h"
@@ -191,4 +191,4 @@ BlFindFileDirectory(
     _In_ PCWSTR File
 );
 
-#endif // !_FILESYSTEM_H
+#endif // !FILESYSTEM_H

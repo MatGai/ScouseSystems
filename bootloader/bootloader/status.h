@@ -29,21 +29,21 @@ typedef EFI_STATUS BL_STATUS;
 #define BL_WARNING( Status ) ( ((Status) & 0xFF000000) == BL_STATUS_WARNING_BASE )
 #define BL_ERROR( Status )   ( EFI_ERROR( Status ) )
 
-#ifdef _DEBUG
+#if defined( _DEBUG ) || defined( _DEBUG_IDA )
 
 #define PRINT_DEBUG_INTERNAL(Level, Message, ...)                                \
     do {                                                                         \
         CHAR16 WideFunction[256];                                                \
         AsciiToUnicode(__func__, WideFunction,                                   \
                        sizeof(WideFunction) / sizeof(CHAR16));                   \
-        Print(L"[ %s ] %s:%d: " Message, Level, WideFunction,                    \
+        Print(L"[ %s ] %s:%d: " Message, Level, WideFunction,              \
               __LINE__, ##__VA_ARGS__);                                          \
     } while (0)
 
 #define DBG_INFO(Message, ...)   PRINT_DEBUG_INTERNAL(L"Info",   Message, ##__VA_ARGS__)
 #define DBG_ERROR(Status, Message, ...)  PRINT_DEBUG_INTERNAL(Status, Message, ##__VA_ARGS__)
 
-#define DBG_ASSERT(Expression, Return, Message, ...)                           \
+#define DBG_ASSERT(Expression, Return, Message, ...)                             \
     do {                                                                         \
         if (!(Expression))                                                       \
         {                                                                        \
