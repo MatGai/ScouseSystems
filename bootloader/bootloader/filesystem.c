@@ -27,7 +27,7 @@ BlGetRootDirectory(
     if (!LoadedImage)
     {
         EFI_STATUS LastError = BlGetLastFileError( );
-        DBG_ERROR( LastError, L"Loaded image was null, maybe failed to get it ? ",  );
+        DBG_ERROR( LastError, L"Loaded image was null, maybe failed to get it ? "  );
         return LastError;
     }
 

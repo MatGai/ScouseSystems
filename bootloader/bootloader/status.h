@@ -54,9 +54,9 @@ typedef EFI_STATUS BL_STATUS;
 
 #else   /* !_DEBUG */
 
-#define DEBUG_INFO(...)   ((void)0)
-#define DEBUG_ERROR(...)  ((void)0)
-#define DEBUG_ASSERT(Expression, Return, ...)                                    \
+#define DBG_INFO(...)   ((void)0)
+#define DBG_ERROR(...)  ((void)0)
+#define DBG_ASSERT(Expression, Return, ...)                                      \
     do {                                                                         \
         if (!(Expression)) {                                                     \
             return (Return);                                                     \

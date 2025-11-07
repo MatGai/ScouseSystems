@@ -1,0 +1,21 @@
+
+.code
+
+PUBLIC __switchcr3
+
+
+; rcx rdx r8  r9
+
+__switchcr3 PROC
+	
+	cli
+	mov cr3, rcx
+	mov rsp, rdx
+	
+	push r8
+	ret
+
+__switchcr3 ENDP
+
+
+END

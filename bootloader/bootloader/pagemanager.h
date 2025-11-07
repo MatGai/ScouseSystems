@@ -6,6 +6,21 @@
 #include <Library/BaseMemoryLib.h>
 #include "general.h"
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+    void __switchcr3(
+        unsigned long long,
+        unsigned long long,
+        unsigned long long
+    );
+
+#ifdef __cplusplus
+}
+#endif
+
 typedef union _VIRT_ADDR_T
 {
     PVOID Value;
@@ -20,103 +35,182 @@ typedef union _VIRT_ADDR_T
     };
 } VIRT_ADDR_T, * PVIRT_ADDR_T;
 
-typedef union _plm4e
+typedef union _BL_VIRTUAL_ADDRESS
 {
     ULONG64 Value;
+
     struct
     {
-        ULONG64 Present : 1;          // bits [ 0 ]
-        ULONG64 Rw : 1;               // bits [ 1 ]
-        ULONG64 UserAccess : 1;       // bits [ 2 ]
-        ULONG64 PageWriteThrough : 1; // bits [ 3 ]
-        ULONG64 PageCache : 1;        // bits [ 4 ]
-        ULONG64 Accessed : 1;         // bits [ 5 ]
-        ULONG64 __ignored1 : 1;       // bits [ 6 ]
-        ULONG64 PageSize : 1;         // bits [ 7 ] /* (must be 0 for plm4) */
-        ULONG64 __ignored2 : 1;       // bits [ 8 ]
-        ULONG64 Pfn : 36;             // bits [ 9:44 ]
-        ULONG64 __reserved : 4;       // bits [ 45:48 ]
-        ULONG64 __ignored3 : 11;      // bits [ 49:59 ]
-        ULONG64 Nx : 1;               // bits [ 60 ]
+        ULONG64 Offset : 12;
+        ULONG64 PTIndex : 9;
+        ULONG64 PDIndex : 9;
+        ULONG64 PDPTIndex : 9;
+        ULONG64 PML4Index : 9;
+        ULONG64 Reserved : 16;
     };
-} plm4e, * pplm4e;
 
-typedef plm4e PML4E;
-typedef pplm4e PPML4E;
+    struct
+    {
+        ULONG64 Offset : 21;
+        ULONG64 PDIndex : 9;
+        ULONG64 PDPTIndex : 9;
+        ULONG64 PML4Index : 9;
+        ULONG64 Reserved : 16;
+    } Large;
 
-typedef union _pdpte
+    struct
+    {
+        ULONG64 Offset : 30;
+        ULONG64 PDPTIndex : 9;
+        ULONG64 PML4Index : 9;
+        ULONG64 Reserved : 16;
+    } Huge;
+
+} BL_VIRTUAL_ADDRESS, * PBL_VIRTUAL_ADDRESS;
+
+static_assert(sizeof(BL_VIRTUAL_ADDRESS) == sizeof(ULONG64), "BL_VIRTUAL_ADDRESS must be 8 bytes in size");
+
+typedef union _BL_PAGE_ENTRY_DESCRIPTOR
 {
     ULONG64 Value;
+
+    //
+    // Intel SDM Volume 3
+    // Table 5-20. Format of a Page-Table Entry that Maps a 4-KByte Page
+    //
     struct
     {
-        ULONG64 Present : 1;     // bits [ 0 ]
-        ULONG64 Rw : 1;          // bits [ 1 ]
-        ULONG64 UserAccess : 1;  // bits [ 2 ]
-        ULONG64 PageWrite : 1;   // bits [ 3 ]
-        ULONG64 PageCache : 1;   // bits [ 4 ]
-        ULONG64 Accessed : 1;    // bits [ 5 ]
-        ULONG64 __ignored1 : 1;  // bits [ 6 ]
-        ULONG64 PageSize : 1;    // bits [ 7 ] /* (if set maps 1GB, otherwise points to PD) */   
-        ULONG64 __ignored2 : 1;  // bits [ 8 ]
-        ULONG64 Pfn : 36;        // bits [ 9:44 ]
-        ULONG64 __reserved : 4;  // bits [ 45:48 ]
-        ULONG64 __ignored3 : 11; // bits [ 49:59 ]
-        ULONG64 Nx : 1;          // bits [ 60 ]
+        ULONG64 Present : 1;            // [0]
+        ULONG64 Writable : 1;           // [1]
+        ULONG64 UserSupervisor : 1;     // [2]
+        ULONG64 PageWriteThrough : 1;   // [3]
+        ULONG64 PageCacheDisable : 1;   // [4]
+        ULONG64 Accessed : 1;           // [5]
+        ULONG64 Dirty : 1;              // [6]
+        ULONG64 PAT : 1;                // [7]
+        ULONG64 Global : 1;             // [8]
+        ULONG64 Ignored1 : 2;           // [10:9]
+        ULONG64 HLATRestart : 1;        // [11]
+        ULONG64 PageFrameNumber : 36;   // [47:12]
+        ULONG64 Reserved0 : 4;          // [51:48]
+        ULONG64 Ignored2 : 7;           // [58:52]
+        ULONG64 ProtectionKey : 4;      // [62:59]
+        ULONG64 NoExecute : 1;          // [63]
     };
-} pdpte, * ppdpte;
 
-typedef pdpte PDPTE;
-typedef ppdpte PPDPTE;
-
-typedef union _pde
-{
-    ULONG64 Value;
+    //
+    // Intel SDM Volume 3
+    // Table 5-18. Format of a Page-Directory Entry that Maps a 2-MByte Page
+    //
     struct
     {
-        ULONG64 Present : 1;      // bits [ 0 ]
-        ULONG64 Rw : 1;           // bits [ 1 ]
-        ULONG64 UserAccess : 1;   // bits [ 2 ]
-        ULONG64 PageWrite : 1;    // bits [ 3 ]
-        ULONG64 PageCache : 1;    // bits [ 4 ]
-        ULONG64 Accessed : 1;     // bits [ 5 ]
-        ULONG64 __ignored1 : 1;   // bits [ 6 ]
-        ULONG64 PageSize : 1;     // bits [ 7 ] /* (if set maps 2MB otherwise points to PT) */
-        ULONG64 __ignored2 : 1;   // bits [ 8 ]
-        ULONG64 Pfn : 36;         // bits [ 9:44 ]
-        ULONG64 __reserved : 4;   // bits [ 45:48 ]
-        ULONG64 __ignored3 : 11;  // bits [ 49:59 ]
-        ULONG64 Nx : 1;           // bits [ 60 ]
-    };
-} pde, * ppde;
+        ULONG64 Present : 1;            // [0]
+        ULONG64 Writable : 1;           // [1]
+        ULONG64 UserSupervisor : 1;     // [2]
+        ULONG64 PageWriteThrough : 1;   // [3]
+        ULONG64 PageCacheDisable : 1;   // [4]
+        ULONG64 Accessed : 1;           // [5]
+        ULONG64 Dirty : 1;              // [6]
+        ULONG64 LargePage : 1;          // [7]
+        ULONG64 Global : 1;             // [8]
+        ULONG64 Ignored1 : 2;           // [10:9]
+        ULONG64 HLATRestart : 1;        // [11]
+        ULONG64 PAT : 1;                // [12]
+        ULONG64 Reserved0 : 8;          // [20:13]
+        ULONG64 PageFrameNumber : 31;   // [51:21]
+        ULONG64 Reserved1 : 1;          // [52]
+        ULONG64 Ignored2 : 6;           // [58:53]
+        ULONG64 ProtectionKey : 4;      // [62:59]
+        ULONG64 NoExecute : 1;          // [63]
 
-typedef pde PDE;
-typedef ppde PPDE;
+    } Large;
 
-typedef union _pte
-{
-    ULONG64 Value;
+    //
+    // Intel SDM Volume 3
+    // Table 5-16. Format of a Page-Directory-Pointer-Table Entry (PDPTE) that Maps a 1-GByte Page
+    //
     struct
     {
-        ULONG64 Present : 1;            
-        ULONG64 Rw : 1;
-        ULONG64 UserAccess : 1;
-        ULONG64 PageWrite : 1;
-        ULONG64 PageCache : 1;
-        ULONG64 Accessed : 1;
-        ULONG64 Dirty : 1;
-        ULONG64 PageAccessType : 1;
-        ULONG64 Global : 1;
-        ULONG64 __ignored1 : 3;
-        ULONG64 Pfn : 36;
-        ULONG64 __reserved : 4;
-        ULONG64 __ignored3 : 7;
-        ULONG64 ProtectedKey : 4;
-        ULONG64 Nx : 1;
-    };
-} pte, * ppte;
+        ULONG64 Present : 1;            // [0]
+        ULONG64 Writable : 1;           // [1]
+        ULONG64 UserSupervisor : 1;     // [2]
+        ULONG64 PageWriteThrough : 1;   // [3]
+        ULONG64 PageCacheDisable : 1;   // [4]
+        ULONG64 Accessed : 1;           // [5]
+        ULONG64 Dirty : 1;              // [6]
+        ULONG64 LargePage : 1;          // [7]
+        ULONG64 Global : 1;             // [8]
+        ULONG64 Ignored1 : 2;           // [10:9]
+        ULONG64 HLATRestart : 1;        // [11]
+        ULONG64 PAT : 1;                // [12]
+        ULONG64 Reserved0 : 17;         // [29:13]
+        ULONG64 PageFrameNumber : 22;   // [51:30]
+        ULONG64 Reserved1 : 1;          // [52]
+        ULONG64 Ignored2 : 6;           // [58:53]
+        ULONG64 ProtectionKey : 4;      // [62:59]
+        ULONG64 NoExecute : 1;          // [63]
 
-typedef pte PTE;
-typedef ppte PPTE;
+    } Huge;
+
+    union
+    {
+        struct
+        {
+            ULONG64 Readable : 1;           // [0]
+            ULONG64 Writable : 1;           // [1]
+            ULONG64 Executable : 1;         // [2]
+            ULONG64 MemoryType : 3;         // [5:3]
+            ULONG64 IgnorePAT : 1;          // [6]
+            ULONG64 Reserved0 : 1;          // [7]
+            ULONG64 Accessed : 1;           // [8]
+            ULONG64 Dirty : 1;              // [9]
+            ULONG64 UserExecute : 1;        // [10]
+            ULONG64 Reserved1 : 1;          // [11]
+            ULONG64 PageFrameNumber : 36;   // [47:12]
+            ULONG64 Reserved2 : 15;         // [62:48]
+            ULONG64 SupressVE : 1;          // [63]
+        };
+
+        struct
+        {
+            ULONG64 Readable : 1;           // [0]
+            ULONG64 Writable : 1;           // [1]
+            ULONG64 Executable : 1;         // [2]
+            ULONG64 MemoryType : 3;         // [5:3]
+            ULONG64 IgnorePAT : 1;          // [6]
+            ULONG64 LargePage : 1;          // [7]
+            ULONG64 Accessed : 1;           // [8]
+            ULONG64 Dirty : 1;              // [9]
+            ULONG64 UserExecute : 1;        // [10]
+            ULONG64 Reserved1 : 10;         // [20:11]
+            ULONG64 PageFrameNumber : 27;   // [47:21]
+            ULONG64 Reserved2 : 15;         // [62:48]
+            ULONG64 SupressVE : 1;          // [63]
+
+        } Large;
+
+        struct
+        {
+            ULONG64 Readable : 1;           // [0]
+            ULONG64 Writable : 1;           // [1]
+            ULONG64 Executable : 1;         // [2]
+            ULONG64 MemoryType : 3;         // [5:3]
+            ULONG64 IgnorePAT : 1;          // [6]
+            ULONG64 LargePage : 1;          // [7]
+            ULONG64 Accessed : 1;           // [8]
+            ULONG64 Dirty : 1;              // [9]
+            ULONG64 UserExecute : 1;        // [10]
+            ULONG64 Reserved1 : 19;         // [29:11]
+            ULONG64 PageFrameNumber : 18;   // [47:30]
+            ULONG64 Reserved2 : 15;         // [62:48]
+            ULONG64 SupressVE : 1;          // [63]
+        } Huge;
+
+    } Extended;
+
+} BL_PAGE_ENTRY_DESCRIPTOR, * PBL_PAGE_ENTRY_DESCRIPTOR; 
+
+static_assert(sizeof(BL_PAGE_ENTRY_DESCRIPTOR) == sizeof(ULONG64), "BL_PAGE_ENTRY_DESCRIPTOR must be 8 bytes in size");
 
 typedef enum _PFN_STATE
 {
@@ -143,7 +237,7 @@ ULONG64    SsPfnFreeHead;
 
 #define DEFAULT_PAGE_SIZE 0x1000
 #define LARGE_PAGE_SIZE   0x200000
-#define LARGEST_PAGE_SIZE 0x40000000
+#define HUGE_PAGE_SIZE    0x40000000
 
 #define PAGE_SHIFT 12
 #define PFN_LIST_END 0xffffff
@@ -163,6 +257,15 @@ ULONG64    SsPfnFreeHead;
 #define DIRECT_MAP_BASE HIGH_MEMORY_START
 
 #define KERNEL_VA_BASE 0xFFFFFFFF80000000ULL
+
+#define ALIGN_PAGE( val ) ((ULONG64)val & ~0xFFFull)
+#define PAGE_OFFSET( val ) ((ULONG64)val & 0xFFFull)
+
+#define ALIGN_LARGE_PAGE( val ) ((ULONG64)val & ~0xFFFFFull)
+#define LARGE_PAGE_OFFSET( val ) ((ULONG64)val & 0xFFFFFull)
+
+#define ALIGN_HUGE_PAGE( val ) ((ULONG64)val & ~0xFFFFFFFull)
+#define HUGE_PAGE_OFFSET( val ) ((ULONG64)val & 0xFFFFFFFull)
 
 STATIC ULONG64 __pml4, __pdpt, __pd, __pt;
 
@@ -329,9 +432,6 @@ MapPage(
     Print(L"vaddr %p, paddr %p, size %p\n", vaddr, paddr, 0x1000);
     Print(L"plm4indx %p, pdptindx %p, pdindx %p, ptindx %p\n", pml4_index, pdpt_index, pd_index, pt_index);
 
-
-    PVIRT_ADDR_T VirtualAddress = { (PVOID)vaddr };
-
     ULONG64* Pml4e = (ULONG64*)(ULONG64)gPML4;
     ULONG64* PdptTable;
     if (!(Pml4e[pml4_index] & FLAG_PRESENT))
@@ -433,9 +533,9 @@ MapLargePage(
 
     PdpTable = (ULONG64*)(ULONG64)EntryAddress(Pml4[pml4_index]);
 
-    if (size == LARGEST_PAGE_SIZE)
+    if (size == HUGE_PAGE_SIZE)
     {
-        if ((paddr & (LARGEST_PAGE_SIZE - 1ULL)) != 0 || (vaddr & (LARGEST_PAGE_SIZE - 1)) != 0)
+        if ((paddr & (HUGE_PAGE_SIZE - 1ULL)) != 0 || (vaddr & (HUGE_PAGE_SIZE - 1)) != 0)
         {
             DBG_INFO(L"Physical address not aligned for 1GB page");
             getc();
@@ -482,7 +582,8 @@ MapLargePage(
 // DirectMapRange maps all physical memory from physStart to physEnd
 // into the direct mapped region so that VA = DIRECT_MAP_BASE + PA.
 // The caller must ensure that physStart and physEnd are page-aligned.
-EFI_STATUS DirectMapRange(
+EFI_STATUS 
+DirectMapRange(
     ULONG64 PhysStart, 
     ULONG64 PhysEnd
 )
@@ -499,14 +600,14 @@ EFI_STATUS DirectMapRange(
         ULONG64 Remaining = PhysEnd - Phys;
         ULONG64 VA = DIRECT_MAP_BASE + Phys;
 
-        if (((Phys | VA) & (LARGEST_PAGE_SIZE - 1)) == 0 && Remaining >= LARGEST_PAGE_SIZE)
+        if (((Phys | VA) & (HUGE_PAGE_SIZE - 1)) == 0 && Remaining >= HUGE_PAGE_SIZE)
         {
-            Status = MapLargePage(VA, Phys, LARGEST_PAGE_SIZE, FLAG_PRESENT | FLAG_RW | FLAG_NX);
+            Status = MapLargePage(VA, Phys, HUGE_PAGE_SIZE, FLAG_PRESENT | FLAG_RW | FLAG_NX);
             if (EFI_ERROR(Status))
             {
                 return Status;
             }
-            Phys += LARGEST_PAGE_SIZE;
+            Phys += HUGE_PAGE_SIZE;
         }
         else if (((Phys | VA) & (LARGE_PAGE_SIZE - 1)) == 0 && Remaining >= LARGE_PAGE_SIZE)
         {
@@ -529,6 +630,15 @@ EFI_STATUS DirectMapRange(
     }
     //ReloadCR3(); // Flush the TLB
     return EFI_SUCCESS;
+}
+
+EFI_STATUS
+BLAPI
+UnmapPage(
+    ULONG64 vaddr
+)
+{
+
 }
 
 EFI_STATUS
@@ -577,15 +687,6 @@ MapKernel(
     }
 
     return EFI_SUCCESS;
-}
-
-VOID
-BLAPI
-WalkPhysical(
-    ULONG64 Phys
-)
-{
-
 }
 
 #endif // !PAGEMANAGER_H

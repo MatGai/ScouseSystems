@@ -104,4 +104,9 @@
       <Filter>registers</Filter>
     </MASM>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="pagemanager.masm">
+      <Filter>paging</Filter>
+    </None>
+  </ItemGroup>
 </Project>

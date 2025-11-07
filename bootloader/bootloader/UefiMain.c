@@ -3,6 +3,7 @@
 #include "pagemanager.h"
 #include "control.h"
 #include "special.h"
+#include "status.h"
 
 typedef struct _BOOT_INFO
 {
@@ -13,6 +14,12 @@ typedef struct _BOOT_INFO
 CHAR8* gEfiCallerBaseName = "Scouse Systems";
 const UINT32 _gUefiDriverRevision = 0x0;
 
+EFI_STATUS
+BLAPI
+InitalSetup(
+    EFI_HANDLE ImageHandle
+);
+
 /**
 * @brief Needed for VisualUefi for some reason?
 */
@@ -22,34 +29,6 @@ UefiUnload(
     EFI_HANDLE ImageHandle
 )
 {
-    return EFI_SUCCESS;
-};
-
-EFI_STATUS
-BLAPI
-InitalSetup(
-    EFI_HANDLE* ImageHandle
-)
-{
-    EFI_LOADED_IMAGE* LoadedIamge = NULL;
-    EFI_STATUS err = gBS->HandleProtocol(ImageHandle, &gEfiLoadedImageProtocolGuid, &LoadedIamge);
-
-    if (EFI_ERROR(err))
-    {
-        return err;
-    }
-
-    DBG_INFO(L"handle-> %p", LoadedIamge->ImageBase);
-
-    BlDbgBreak();
-
-    gST->ConOut->ClearScreen(gST->ConOut);
-
-    EFI_TIME time;
-    gRT->GetTime(&time, NULL);
-
-    Print(L"%02d/%02d/%04d ----- %02d:%02d:%0d.%d\r\n", time.Day, time.Month, time.Year, time.Hour, time.Minute, time.Second, time.Nanosecond);
-    
     return EFI_SUCCESS;
 };
 
@@ -70,11 +49,7 @@ UefiMain(
 {
 
     EFI_STATUS Status;
-    Status = InitalSetup(&ImageHandle);
-
-    //DBG_ERROR(Status, L"Hello\n");
-    DBG_INFO(L"Hello %s\n", "sir");
-    getc();
+    Status = InitalSetup(ImageHandle);
 
     if (EFI_ERROR(Status))
     {
@@ -82,8 +57,6 @@ UefiMain(
         getc();
         return Status;
     }
-
-
 
     if ( EFI_ERROR(BlInitFileSystem()) )
     {
@@ -293,6 +266,14 @@ UefiMain(
         return 1;
     }
 
+    ULONG64 SwitchCr3Page;
+
+    gBS->AllocatePages( AllocateAnyPages, EfiConventionalMemory, 1, &SwitchCr3Page );
+
+    CopyMem(&SwitchCr3Page, (PVOID)(((ULONG64)__switchcr3) & ~0xFFFull), DEFAULT_PAGE_SIZE);
+
+    gBS->ExitBootServices(ImageHandle, SystemMemoryMap.Key);
+
     DBG_INFO(L"Direct mapped range 0x%p - 0x%p\n", DIRECT_MAP_BASE, MaxAddress);
     getc();
 
@@ -320,3 +301,32 @@ UefiMain(
 
     return EFI_SUCCESS;
 }
+
+
+EFI_STATUS
+BLAPI
+InitalSetup(
+    EFI_HANDLE ImageHandle
+)
+{
+    EFI_LOADED_IMAGE* LoadedIamge = NULL;
+    EFI_STATUS err = gBS->HandleProtocol(ImageHandle, &gEfiLoadedImageProtocolGuid, &LoadedIamge);
+
+    if (EFI_ERROR(err))
+    {
+        return err;
+    }
+
+    DBG_INFO(L"handle-> %p", LoadedIamge->ImageBase);
+
+    BlDbgBreak();
+
+    gST->ConOut->ClearScreen(gST->ConOut);
+
+    EFI_TIME time;
+    gRT->GetTime(&time, NULL);
+
+    Print(L"%02d/%02d/%04d ----- %02d:%02d:%0d.%d\r\n", time.Day, time.Month, time.Year, time.Hour, time.Minute, time.Second, time.Nanosecond);
+
+    return EFI_SUCCESS;
+};
