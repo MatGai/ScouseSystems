@@ -434,7 +434,9 @@
     </MASM>
   </ItemGroup>
   <ItemGroup>
-    <None Include="pagemanager.masm" />
+    <MASM Include="pagemanager.masm">
+      <FileType>Document</FileType>
+    </MASM>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
