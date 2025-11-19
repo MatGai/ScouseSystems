@@ -7,11 +7,11 @@ BlInitFileSystem(
 )
 {
     EFI_GUID LoadedImageProtocolGUID = EFI_LOADED_IMAGE_PROTOCOL_GUID;
-    FILE_SYSTEM_STATUS = gBS->HandleProtocol( gImageHandle, &LoadedImageProtocolGUID, (VOID**)&LoadedImage );
+    FILE_SYSTEM_STATUS = gBS->HandleProtocol( gImageHandle, &LoadedImageProtocolGUID, ( VOID** )&LoadedImage );
 
     if( EFI_ERROR( FILE_SYSTEM_STATUS ) )
     {
-        DBG_ERROR(FILE_SYSTEM_STATUS, L"Failed to get loaded image protocol");
+        DBG_ERROR( FILE_SYSTEM_STATUS, L"Failed to get loaded image protocol" );
         return FILE_SYSTEM_STATUS;
     }
 
@@ -24,34 +24,34 @@ BlGetRootDirectory(
     _Out_opt_ EFI_FILE_PROTOCOL** Directory
 )
 {
-    if (!LoadedImage)
+    if( !LoadedImage )
     {
         EFI_STATUS LastError = BlGetLastFileError( );
-        DBG_ERROR( LastError, L"Loaded image was null, maybe failed to get it ? "  );
+        DBG_ERROR( LastError, L"Loaded image was null, maybe failed to get it ? " );
         return LastError;
     }
 
     EFI_SIMPLE_FILE_SYSTEM_PROTOCOL* FileProtocol;
-    FILE_SYSTEM_STATUS = gBS->HandleProtocol(LoadedImage->DeviceHandle, &__FileSystemProtoclGUID__, (VOID**)&FileProtocol);
+    FILE_SYSTEM_STATUS = gBS->HandleProtocol( LoadedImage->DeviceHandle, &__FileSystemProtoclGUID__, ( VOID** )&FileProtocol );
 
-    if ( EFI_ERROR( FILE_SYSTEM_STATUS ) )
+    if( EFI_ERROR( FILE_SYSTEM_STATUS ) )
     {
-        DBG_ERROR(FILE_SYSTEM_STATUS, L"Could not get file protocol" );
+        DBG_ERROR( FILE_SYSTEM_STATUS, L"Could not get file protocol" );
         return FILE_SYSTEM_STATUS;
     }
 
     EFI_FILE_PROTOCOL* Root;
-    FILE_SYSTEM_STATUS = FileProtocol->OpenVolume(FileProtocol, &Root );
+    FILE_SYSTEM_STATUS = FileProtocol->OpenVolume( FileProtocol, &Root );
 
-    if( EFI_ERROR( FILE_SYSTEM_STATUS )  )
+    if( EFI_ERROR( FILE_SYSTEM_STATUS ) )
     {
-        DBG_ERROR(FILE_SYSTEM_STATUS, L"Could not open the root directory");
+        DBG_ERROR( FILE_SYSTEM_STATUS, L"Could not open the root directory" );
         return FILE_SYSTEM_STATUS;
     }
 
     CurrentDirectory = Root;
 
-    if (Directory)
+    if( Directory )
     {
         *Directory = Root;
     }
@@ -70,7 +70,7 @@ BlGetRootDirectoryByIndex(
     ULONG64 HandleCount = 0;
 
     // Get all handles to all file systems on this system
-    FILE_SYSTEM_STATUS = gBS->LocateHandleBuffer(ByProtocol, &__FileSystemProtoclGUID__, NULL, &HandleCount, &FileSystemHandles);
+    FILE_SYSTEM_STATUS = gBS->LocateHandleBuffer( ByProtocol, &__FileSystemProtoclGUID__, NULL, &HandleCount, &FileSystemHandles );
 
     if( EFI_ERROR( FILE_SYSTEM_STATUS ) || !HandleCount )
     {
@@ -78,7 +78,7 @@ BlGetRootDirectoryByIndex(
     }
 
     // well this just shouldn't happen!
-    if( (ULONG64)Index > HandleCount )
+    if( ( ULONG64 )Index > HandleCount )
     {
         FreePool( FileSystemHandles );
         return FALSE;
@@ -86,8 +86,8 @@ BlGetRootDirectoryByIndex(
 
     // open the file system by handle index
     EFI_SIMPLE_FILE_SYSTEM_PROTOCOL* FileProtocol;
-    FILE_SYSTEM_STATUS = gBS->OpenProtocol( FileSystemHandles[ Index ], &__FileSystemProtoclGUID__, (VOID**)&FileProtocol, gImageHandle, NULL, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL );
-    
+    FILE_SYSTEM_STATUS = gBS->OpenProtocol( FileSystemHandles[ Index ], &__FileSystemProtoclGUID__, ( VOID** )&FileProtocol, gImageHandle, NULL, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL );
+
     if( EFI_ERROR( FILE_SYSTEM_STATUS ) || !FileProtocol )
     {
         FreePool( FileSystemHandles );
@@ -96,9 +96,9 @@ BlGetRootDirectoryByIndex(
 
     // now actually get the directory!
     EFI_FILE_PROTOCOL* Root;
-    FILE_SYSTEM_STATUS = FileProtocol->OpenVolume(FileProtocol, &Root);
+    FILE_SYSTEM_STATUS = FileProtocol->OpenVolume( FileProtocol, &Root );
 
-    if (EFI_ERROR(FILE_SYSTEM_STATUS))
+    if( EFI_ERROR( FILE_SYSTEM_STATUS ) )
     {
         return FILE_SYSTEM_STATUS;
     }
@@ -106,7 +106,7 @@ BlGetRootDirectoryByIndex(
     CurrentFileSystemHandle = FileSystemHandles[ Index ];
     CurrentDirectory = Root;
 
-    if ( Directory )
+    if( Directory )
     {
         *Directory = Root;
     }
@@ -122,7 +122,7 @@ BlOpenSubDirectory(
     _Out_ EFI_FILE_PROTOCOL** OutDirectory
 )
 {
-    if (!BaseDirectory || !Path || !OutDirectory) 
+    if( !BaseDirectory || !Path || !OutDirectory )
     {
         FILE_SYSTEM_STATUS = EFI_INVALID_PARAMETER;
         return FILE_SYSTEM_STATUS;
@@ -140,9 +140,9 @@ BlOpenSubDirectory(
     );
 
     // this is not a directory!
-    if (FILE_SYSTEM_STATUS != EFI_FILE_DIRECTORY)
+    if( FILE_SYSTEM_STATUS != EFI_FILE_DIRECTORY )
     {
-        DBG_ERROR(FILE_SYSTEM_STATUS, L"Passed in path '%s' is not a directory to open!!!!", Path );
+        DBG_ERROR( FILE_SYSTEM_STATUS, L"Passed in path '%s' is not a directory to open!!!!", Path );
         FILE_SYSTEM_STATUS = EFI_INVALID_PARAMETER;
         return FILE_SYSTEM_STATUS;
     }
@@ -155,10 +155,10 @@ BlOpenSubDirectory(
         EFI_FILE_MODE_READ,
         EFI_FILE_DIRECTORY
     );
-    
+
     if( EFI_ERROR( FILE_SYSTEM_STATUS ) )
     {
-        DBG_ERROR(FILE_SYSTEM_STATUS, L"Failed to open '%s' as directory", Path);
+        DBG_ERROR( FILE_SYSTEM_STATUS, L"Failed to open '%s' as directory", Path );
         return FILE_SYSTEM_STATUS;
     }
 
@@ -173,19 +173,19 @@ BlFindFile(
     _Out_ EFI_FILE_PROTOCOL** OutFile
 )
 {
-    if (File == NULL)
+    if( File == NULL )
     {
         return FALSE;
     }
 
     // Make sure we have a CurrentDirectory
-    if (!CurrentDirectory) 
+    if( !CurrentDirectory )
     {
         // default to fs0: root
         BlGetRootDirectory( NULL );
 
         // if this happens then...well...
-        if (!CurrentDirectory)
+        if( !CurrentDirectory )
         {
             return BL_STATUS_GENERIC_ERROR;
         }
@@ -200,11 +200,11 @@ BlFindFile(
         0
     );
 
-    if (EFI_ERROR(FILE_SYSTEM_STATUS))
+    if( EFI_ERROR( FILE_SYSTEM_STATUS ) )
     {
-        Print(L"Failed to open file '%s' with error %s\n", File, FILE_SYSTEM_STATUS);
-        getc();
-        DBG_ERROR(FILE_SYSTEM_STATUS, L"Failed to open file '%s'\n", File );
+        Print( L"Failed to open file '%s' with error %s\n", File, FILE_SYSTEM_STATUS );
+        getc( );
+        DBG_ERROR( FILE_SYSTEM_STATUS, L"Failed to open file '%s'\n", File );
 
         return FALSE;
     }
@@ -220,23 +220,23 @@ BlListDirectoryRecursive(
     _In_ ULONG64 Depth
 )
 {
-    if (Directory == NULL) 
+    if( Directory == NULL )
     {
         return FALSE;
     }
 
     // reset position so we read from the start
-    FILE_SYSTEM_STATUS = Directory->SetPosition(Directory, 0);
-    if (EFI_ERROR(FILE_SYSTEM_STATUS)) 
+    FILE_SYSTEM_STATUS = Directory->SetPosition( Directory, 0 );
+    if( EFI_ERROR( FILE_SYSTEM_STATUS ) )
     {
-        DBG_ERROR(L"Failed to SetPosition on directory\n");
+        DBG_ERROR( L"Failed to SetPosition on directory\n" );
         return FALSE;
     }
 
     // allocate a buffer for EFI_FILE_INFO. Sketchy as won't work for longer names.
     ULONG64 BufferSize = 0x128;
-    EFI_FILE_INFO* FileInfo = AllocateZeroPool(BufferSize);
-    if (!FileInfo) 
+    EFI_FILE_INFO* FileInfo = AllocateZeroPool( BufferSize );
+    if( !FileInfo )
     {
         //probably out of resources?
         FILE_SYSTEM_STATUS = EFI_OUT_OF_RESOURCES;
@@ -244,40 +244,40 @@ BlListDirectoryRecursive(
     }
 
     // Keep reading entries until we reach the end of the directory
-    while (TRUE) 
+    while( TRUE )
     {
         ULONG64 Size = BufferSize;
-        FILE_SYSTEM_STATUS = Directory->Read(Directory, &Size, FileInfo);
-        if (EFI_ERROR(FILE_SYSTEM_STATUS))
+        FILE_SYSTEM_STATUS = Directory->Read( Directory, &Size, FileInfo );
+        if( EFI_ERROR( FILE_SYSTEM_STATUS ) )
         {
-            DBG_ERROR(FILE_SYSTEM_STATUS, L"Failed to read directory 's'\n", FileInfo->FileName);
-            FreePool(FileInfo);
+            DBG_ERROR( FILE_SYSTEM_STATUS, L"Failed to read directory 's'\n", FileInfo->FileName );
+            FreePool( FileInfo );
             return FALSE;
         }
 
-        if (Size == 0) 
+        if( Size == 0 )
         {
             //no more to read
             break;
         }
 
         // skip the '.' and '..' at the start of directories to avoid infinite recursion
-        if ((StrCmp(FileInfo->FileName, L".") == 0) ||
-            (StrCmp(FileInfo->FileName, L"..") == 0)) 
+        if( ( StrCmp( FileInfo->FileName, L"." ) == 0 ) ||
+            ( StrCmp( FileInfo->FileName, L".." ) == 0 ) )
         {
             continue;
         }
 
         // just add indentation
-        for (ULONG64 i = 0; i < Depth; i++) 
+        for( ULONG64 i = 0; i < Depth; i++ )
         {
-            Print(L"  ");
+            Print( L"  " );
         }
 
         //check if its directory and list its contents
-        if (FileInfo->Attribute & EFI_FILE_DIRECTORY) 
+        if( FileInfo->Attribute & EFI_FILE_DIRECTORY )
         {
-            Print(L"<DIR> %s\n", FileInfo->FileName);
+            Print( L"<DIR> %s\n", FileInfo->FileName );
 
             // try to open the subdirectory
             EFI_FILE_PROTOCOL* SubDirectory = NULL;
@@ -289,26 +289,26 @@ BlListDirectoryRecursive(
                 0
             );
 
-            if (EFI_ERROR(FILE_SYSTEM_STATUS) && !SubDirectory)
+            if( EFI_ERROR( FILE_SYSTEM_STATUS ) && !SubDirectory )
             {
-                DBG_ERROR(FILE_SYSTEM_STATUS, L"Cannot open subdirectory %s\n", FileInfo->FileName);
-                FreePool(FileInfo);
+                DBG_ERROR( FILE_SYSTEM_STATUS, L"Cannot open subdirectory %s\n", FileInfo->FileName );
+                FreePool( FileInfo );
                 return FALSE;
             }
 
             // recursive call
-            BlListDirectoryRecursive(SubDirectory, Depth + 1);
+            BlListDirectoryRecursive( SubDirectory, Depth + 1 );
             // make sure to close
-            SubDirectory->Close(SubDirectory);
+            SubDirectory->Close( SubDirectory );
         }
-        else 
+        else
         {
             //if its a file then display contents
-            Print(L"%-6d  %s\n", FileInfo->FileSize, FileInfo->FileName);
+            Print( L"%-6d  %s\n", FileInfo->FileSize, FileInfo->FileName );
         }
     }
 
-    FreePool(FileInfo);
+    FreePool( FileInfo );
     return TRUE;
 }
 
@@ -319,23 +319,23 @@ BlListAllFiles(
     VOID
 )
 {
-    if (!CurrentDirectory) 
+    if( !CurrentDirectory )
     {
         //try get current directory
-        BlGetRootDirectory(NULL);
+        BlGetRootDirectory( NULL );
 
         //well that is just nice
-        if (!CurrentDirectory)
+        if( !CurrentDirectory )
         {
             return FALSE;
         }
     }
 
-    Print(L"\nDirectory listing -> \n");
-    return BlListDirectoryRecursive(CurrentDirectory, 0);
+    Print( L"\nDirectory listing -> \n" );
+    return BlListDirectoryRecursive( CurrentDirectory, 0 );
 }
 
-EFI_STATUS 
+EFI_STATUS
 BLAPI
 BlGetLastFileError(
     VOID
@@ -343,44 +343,44 @@ BlGetLastFileError(
 {
     return FILE_SYSTEM_STATUS;
 }
- 
+
 EFI_STATUS
 BLAPI
 BlSetWorkingDirectory(
     _In_ PCWSTR Directory
 )
 {
-    if (Directory == NULL || Directory[0] == '\0')
+    if( Directory == NULL || Directory[ 0 ] == '\0' )
     {
         FILE_SYSTEM_STATUS = EFI_INVALID_PARAMETER;
         return EFI_INVALID_PARAMETER;
     }
 
     // if no set directory set it!
-    if ( CurrentDirectory == NULL ) 
+    if( CurrentDirectory == NULL )
     {
         if( EFI_ERROR( BlGetRootDirectory( NULL ) ) )
         {
-            if ( EFI_ERROR( FILE_SYSTEM_STATUS ) )
+            if( EFI_ERROR( FILE_SYSTEM_STATUS ) )
             {
-                DBG_ERROR(FILE_SYSTEM_STATUS, L"Failed to get root directory of fs0\n");
+                DBG_ERROR( FILE_SYSTEM_STATUS, L"Failed to get root directory of fs0\n" );
                 return FALSE;
             }
         }
     }
 
-    if ( CurrentDirectory ) 
+    if( CurrentDirectory )
     {
         EFI_FILE_PROTOCOL* NewDirectory = NULL;
 
-        if ( BlOpenSubDirectory(CurrentDirectory, Directory, &NewDirectory) && NewDirectory )
+        if( BlOpenSubDirectory( CurrentDirectory, Directory, &NewDirectory ) && NewDirectory )
         {
             // we got new direectory!
             CurrentDirectory = NewDirectory;
             return TRUE;
         }
- 
-        DBG_ERROR(FILE_SYSTEM_STATUS, L"Failed to get new directory '%s'\n", Directory );
+
+        DBG_ERROR( FILE_SYSTEM_STATUS, L"Failed to get new directory '%s'\n", Directory );
     }
 
     return FALSE;
@@ -389,18 +389,18 @@ BlSetWorkingDirectory(
 EFI_STATUS
 BlGetFileName(
     _In_ EFI_FILE_PROTOCOL* FileProtocol,
-    _Out_ PCWSTR* Out 
+    _Out_ PCWSTR* Out
 )
 {
-    if (FileProtocol == NULL) 
+    if( FileProtocol == NULL )
     {
         FILE_SYSTEM_STATUS = EFI_INVALID_PARAMETER;
         return FILE_SYSTEM_STATUS;
     }
 
     ULONG64        InfoSize = 0x128;
-    EFI_FILE_INFO* FileInfo = AllocateZeroPool(InfoSize);
-    if ( !FileInfo ) 
+    EFI_FILE_INFO* FileInfo = AllocateZeroPool( InfoSize );
+    if( !FileInfo )
     {
         FILE_SYSTEM_STATUS = EFI_OUT_OF_RESOURCES;
         return FILE_SYSTEM_STATUS;
@@ -413,15 +413,15 @@ BlGetFileName(
         FileInfo
     );
 
-    if (EFI_ERROR(FILE_SYSTEM_STATUS))
+    if( EFI_ERROR( FILE_SYSTEM_STATUS ) )
     {
-        FreePool(FileInfo);
+        FreePool( FileInfo );
         return FILE_SYSTEM_STATUS;
     }
 
-    strfmt(Out, L"%s", FileInfo->FileName);
+    strfmt( Out, L"%s", FileInfo->FileName );
 
-    FreePool(FileInfo);
+    FreePool( FileInfo );
     return EFI_SUCCESS;
 }
 
@@ -431,7 +431,7 @@ BlGetFileInfo(
     _Inout_ EFI_FILE_INFO** FileInfo
 )
 {
-    if (FileHandle == NULL || FileInfo == NULL)
+    if( FileHandle == NULL || FileInfo == NULL )
     {
         FILE_SYSTEM_STATUS = EFI_INVALID_PARAMETER;
         return FILE_SYSTEM_STATUS;
@@ -440,36 +440,36 @@ BlGetFileInfo(
     //
     // allocate for sizeof( EFI_FILE_INFO ) + padding for file name size
     //
-    UINTN FileInfoInfoAllocSize = sizeof(EFI_FILE_INFO) + 1024;
-    EFI_STATUS Result = gBS->AllocatePool(EfiBootServicesData, FileInfoInfoAllocSize, FileInfo);
-    if (EFI_ERROR(Result))
+    UINTN FileInfoInfoAllocSize = sizeof( EFI_FILE_INFO ) + 1024;
+    EFI_STATUS Result = gBS->AllocatePool( EfiBootServicesData, FileInfoInfoAllocSize, FileInfo );
+    if( EFI_ERROR( Result ) )
     {
         FILE_SYSTEM_STATUS = Result;
         return FILE_SYSTEM_STATUS;
     }
 
-    Result = FileHandle->GetInfo(FileHandle, &gEfiFileInfoGuid, &FileInfoInfoAllocSize, *FileInfo);
-    if (EFI_ERROR(Result))
+    Result = FileHandle->GetInfo( FileHandle, &gEfiFileInfoGuid, &FileInfoInfoAllocSize, *FileInfo );
+    if( EFI_ERROR( Result ) )
     {
         //
         // if somehow file name size was > 1024 re allocate and try again
         //
-        if (Result == EFI_BUFFER_TOO_SMALL)
+        if( Result == EFI_BUFFER_TOO_SMALL )
         {
-            gBS->FreePool(*FileInfo);
-            Result = gBS->AllocatePool(EfiBootServicesData, FileInfoInfoAllocSize, FileInfo);
-            if (EFI_ERROR(Result))
+            gBS->FreePool( *FileInfo );
+            Result = gBS->AllocatePool( EfiBootServicesData, FileInfoInfoAllocSize, FileInfo );
+            if( EFI_ERROR( Result ) )
             {
                 FILE_SYSTEM_STATUS = Result;
                 return FILE_SYSTEM_STATUS;
             }
 
-            Result = FileHandle->GetInfo(FileHandle, &gEfiFileInfoGuid, &FileInfoInfoAllocSize, *FileInfo);
+            Result = FileHandle->GetInfo( FileHandle, &gEfiFileInfoGuid, &FileInfoInfoAllocSize, *FileInfo );
 
-            if (EFI_ERROR(Result))
+            if( EFI_ERROR( Result ) )
             {
                 FILE_SYSTEM_STATUS = Result;
-                gBS->FreePool(*FileInfo);
+                gBS->FreePool( *FileInfo );
                 return FILE_SYSTEM_STATUS;
             }
         }

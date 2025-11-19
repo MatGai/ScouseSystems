@@ -13,13 +13,13 @@ BlDbgBreak(
 )
 {
 #ifdef _DEBUG_IDA
-    _int3();
+    _int3( );
 #endif // _DEBUG_IDA
 };
 
 /**
 * Pauses process essentially until a keyboard event has occured and returns key pressed
-* 
+*
 * @return A structure containing the key that was pressed
 */
 EFI_INPUT_KEY
@@ -32,7 +32,7 @@ getc(
 
 /**
 *  Gets the length of the string
-* 
+*
 * @return the length of the string
 */
 INTN
@@ -45,7 +45,7 @@ strlength(
 
 /**
 * Copies the string from one buffer to the other
-* 
+*
 * @param dst The string to move to
 * @param src The string to copy from
 */
@@ -58,10 +58,10 @@ strcopy(
 
 /**
 * Case sensitive string comparison
-* 
+*
 * @param s0 String to compare
 * @param s1 Sting to compare against
-* 
+*
 * @return 0 if they are the same else they are not the same
 */
 INTN
@@ -73,11 +73,11 @@ strcompare(
 
 /**
 *   Outputs a formated string to the buffer
-* 
+*
 * @param Out The buffer to place formatted string into
 * @param Format The base string to format against
 * @param ... Variadic arguments to be used with Format string
-* 
+*
 * @return if the function failed or not
 */
 BOOLEAN
@@ -90,8 +90,8 @@ strfmt(
 
 VOID
 AsciiToUnicode(
-    _In_  CONST CHAR8*  AsciiString,
-    _Out_ CHAR16*       UnicodeString,
+    _In_  CONST CHAR8* AsciiString,
+    _Out_ CHAR16* UnicodeString,
     _In_  ULONG64       UnicodeBufferSize  // number of CHAR16 elements
 );
 

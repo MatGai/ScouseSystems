@@ -28,36 +28,36 @@ typedef EFI_IMAGE_NT_HEADERS64* PEFI_IMAGE_NT_HEADERS;
 
 typedef struct _IMAGE_THUNK_DATA
 {
-	union
-	{
-		UINT64 ForwarderString;
-		UINT64 Function;
-		UINT64 Ordinal;
-		UINT64 AddressOfData;
+    union
+    {
+        UINT64 ForwarderString;
+        UINT64 Function;
+        UINT64 Ordinal;
+        UINT64 AddressOfData;
 
-	} u1;
+    } u1;
 
 } IMAGE_THUNK_DATA, * PIMAGE_THUNK_DATA;
 
 typedef struct _IMAGE_IMPORT_DESCRIPTOR
 {
-	union
-	{
-		UINT32 Characteristics;			// 0 for terminating null import descriptor
-		UINT32 OriginalFirstThunk;		// RVA to original unbound IAT (PIMAGE_THUNK_DATA)
+    union
+    {
+        UINT32 Characteristics;			// 0 for terminating null import descriptor
+        UINT32 OriginalFirstThunk;		// RVA to original unbound IAT (PIMAGE_THUNK_DATA)
 
-	} u;
+    } u;
 
-	UINT32 TimeDateStamp;
-	UINT32 ForwarderChain;				// -1 if no forwarders
-	UINT32 Name;
-	UINT32 FirstThunk;					// RVA to IAT (if bound this IAT has actual addresses)
+    UINT32 TimeDateStamp;
+    UINT32 ForwarderChain;				// -1 if no forwarders
+    UINT32 Name;
+    UINT32 FirstThunk;					// RVA to IAT (if bound this IAT has actual addresses)
 
 } IMAGE_IMPORT_DESCRIPTOR, * PIMAGE_IMPORT_DESCRIPTOR;
 
 BOOLEAN
 PeIsValidImage(
-	_In_ PBYTE PE
+    _In_ PBYTE PE
 );
 
 #endif // !PE_H

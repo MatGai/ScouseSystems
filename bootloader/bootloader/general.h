@@ -9,19 +9,19 @@ extern "C"
 #endif
 
     VOID
-    _tlbflush(
+        _tlbflush(
         VOID* adr
-    );
-
-    VOID 
-    _mfence(
-        VOID
-    );
+        );
 
     VOID
-    _int3(
+        _mfence(
         VOID
-    );
+        );
+
+    VOID
+        _int3(
+        VOID
+        );
 
 #ifdef __cplusplus
 }

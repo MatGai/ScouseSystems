@@ -15,12 +15,12 @@ static EFI_GUID __FileSystemProtoclGUID__ = SIMPLE_FILE_SYSTEM_PROTOCOL;
 
 static PCWSTR             CurrentDirectoryString;
 static EFI_FILE_PROTOCOL* CurrentDirectory;
-static EFI_HANDLE*        CurrentFileSystemHandle;
+static EFI_HANDLE* CurrentFileSystemHandle;
 static EFI_STATUS         FILE_SYSTEM_STATUS;
 
 static EFI_LOADED_IMAGE_PROTOCOL* LoadedImage;
 
-typedef enum _FILE_SYSTEM 
+typedef enum _FILE_SYSTEM
 {
     FS0 = 0,
     FS1 = 1,
@@ -30,7 +30,7 @@ typedef enum _FILE_SYSTEM
 
 /**
 * Initialises some global variables used by filesystem.
-* 
+*
 * @return TRUE on success, FALSE on error. Get error through BlGetLastFileError() if needed.
 */
 EFI_STATUS
@@ -41,9 +41,9 @@ BlInitFileSystem(
 
 /**
 * Basically gets root or '\\' of the current file system, usually fs0.
-* 
+*
 * @param Directory, A pointer to the directory. Optional, set to NULL if you don't need it.
-* 
+*
 * @return TRUE on success, FALSE on error. Get error through BlGetLastFileError() if needed.
 */
 EFI_STATUS
@@ -57,7 +57,7 @@ BlGetRootDirectory(
 *
 * @param Index     A file system index, fs0, fs1.
 * @param Directory A pointer to the EFI_FILE_PROTOCOL* directory. Optional, set to NULL if you don't need it.
-* 
+*
 * @return TRUE on success, FALSE on error. Get error through BlGetLastFileError() if needed.
 */
 EFI_STATUS
@@ -69,7 +69,7 @@ BlGetRootDirectoryByIndex(
 
 /**
 * Sets a new working directory.
-* 
+*
 * @param Directory A string of the directory etc... "\\efi\\boot".
 */
 EFI_STATUS
@@ -95,7 +95,7 @@ BlListDirectoryRecursive(
 
 /**
 * List all files and directories in this file system.
-* 
+*
 * @return TRUE on success, FALSE on error. Get error through BlGetLastFileError() if needed.
 */
 EFI_STATUS
@@ -106,11 +106,11 @@ BlListAllFiles(
 
 /**
 * Goes into a directory and sets out directory to opened directory.
-* 
+*
 * @param BaseDirectory
-* @param Path          
+* @param Path
 * @param OutDirectory  A pointer to the EFI_FILE_PROTOCOL directory. Optional, set to NULL if you don't need it.
-* 
+*
 * @return TRUE on success, FALSE on error. Get error through BlGetLastFileError() if needed.
 */
 EFI_STATUS
@@ -127,7 +127,7 @@ BlOpenSubDirectory(
 *
 * @param Path, A string for the file name to look for.
 * @param Out, A pointer to the file found.
-* 
+*
 * @return TRUE on success, FALSE on error. Get error through BlGetLastFileError() if needed.
 */
 EFI_STATUS
@@ -139,7 +139,7 @@ BlFindFile(
 
 /**
 * Gets the last set error for filesystem.
-* 
+*
 * @return The error/sucess of the file system status.
 */
 EFI_STATUS
@@ -150,10 +150,10 @@ BlGetLastFileError(
 
 /**
 * Gets the name of the specified file. !!!MAKE SURE TO FREE STRING BUFFER AFTER USE!!!
-* 
+*
 * @param FileProtocol A  EFI_FILE_PROTOCOL pointer to the file.
 * @param Out          A string buffer for the file name.
-* 
+*
 * @return TRUE on success, FALSE on error. Get error through BlGetLastFileError() if needed.
 */
 EFI_STATUS
@@ -164,10 +164,10 @@ BlGetFileName(
 
 /**
 * Get EFI_FILE_INFO structure for the passed file. !!!RETURNS ALLOCATED MEMORY VIA FileInfo PARAMETER, UP TO THE CALLER TO FREE!!!
-* 
+*
 * @param FileHandle Handle of the file to get the info for
 * @param FileInfo Pointer to an allocated instance of the EFI_FILE_INFO structure
-* 
+*
 * @return TRUE on success, FALSE on error. Get error through BlGetLastFileError() if needed.
 */
 EFI_STATUS
@@ -182,7 +182,7 @@ BlGetFileInfo(
 
 /**
 * Finds the directory of a specific file.
-* 
+*
 * @param File, A string of the file to look for.
 */
 VOID

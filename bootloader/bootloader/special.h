@@ -9,19 +9,19 @@ extern "C"
 #endif
 
     unsigned long long
-    __readeflags(
+        __readeflags(
         void
-    );
+        );
 
     void
-    __writeeflags(
+        __writeeflags(
         unsigned long long
-    );
+        );
 
     unsigned char
-    __cpuidsupport(
+        __cpuidsupport(
         void
-    );
+        );
 
 #ifdef __cplusplus
 }
