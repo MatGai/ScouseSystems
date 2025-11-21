@@ -73,39 +73,54 @@ FindExeFile( _In_ PCWSTR FileName, _Inout_ PBL_LDR_LOADED_IMAGE_INFO FileInfo )
     BlGetRootDirectory( NULL );
 
     BlLdrLoadPEImage64( FileName, FileInfo );
-};
-
-EFI_STATUS
-BLAPI
-DumpPage( ULONG64 Address, // base virtual address
-          ULONG64 Size // number of 8-byte entries
-)
-{
-    ULONG64 start = Address;
-    ULONG64 end = Address + ( Size * sizeof( ULONG64 ) );
-
-    for( ULONG64 addr = start; addr < end; addr += 0x10 ) // 16 bytes per line
-    {
-        // First 8 bytes
-        ULONG64* p0 = ( ULONG64* )( UINTN )addr;
-        ULONG64 v0 = *p0;
-
-        Print( L"0x%p -> 0x%p", addr, v0 );
-
-        // Second 8 bytes (only if still inside range)
-        if( addr + 0x8 < end )
-        {
-            ULONG64* p1 = ( ULONG64* )( UINTN )( addr + 0x8 );
-            ULONG64 v1 = *p1;
-
-            Print( L" | 0x%p -> 0x%p", addr + 0x8, v1 );
-        }
-
-        Print( L"\n" );
-    }
 
     return EFI_SUCCESS;
 };
+
+EFI_STATUS
+MappingExists(
+    ULONG64 Pml4,
+    ULONG64 VirtualAddress
+)
+{
+    ULONG64 Pml4Index = PML4_INDEX( VirtualAddress );
+    ULONG64 PdptIndex = PDPT_INDEX( VirtualAddress );
+    ULONG64 PdIndex   = PD_INDEX( VirtualAddress );
+    ULONG64 PtIndex   = PT_INDEX( VirtualAddress );
+
+    ULONG64* Pml4t = (ULONG64*)Pml4;
+    ULONG64* Pdpt;
+    ULONG64* Pd;
+    ULONG64* Pt;
+
+    if( !( Pml4t[ Pml4Index ] & PAGE_FLAG_PRESENT ) )
+    {
+        return EFI_ABORTED;
+    }
+
+    Pdpt = (ULONG64*)(Pml4t[ Pml4Index ] & 0x000FFFFFFFFFF000ULL );
+
+    if( !( Pdpt[ PdptIndex ] & PAGE_FLAG_PRESENT ) )
+    {
+        return EFI_ABORTED;
+    }
+
+    Pd = ( ULONG64* )( Pdpt[ PdptIndex ] & 0x000FFFFFFFFFF000ULL );
+
+    if( !( Pd[ PdIndex ] & PAGE_FLAG_PRESENT ) )
+    {
+        return EFI_ABORTED;
+    }
+
+    Pt = ( ULONG64* )( Pd[ PdIndex ] & 0x000FFFFFFFFFF000ULL );
+
+    if( !( Pt[ PtIndex ] & PAGE_FLAG_PRESENT ) )
+    {
+        return EFI_ABORTED;
+    }
+    
+    return EFI_SUCCESS;
+}
 
 /**
  * @brief The entry point for the UEFI application.
@@ -197,6 +212,7 @@ UefiMain( EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable )
         switch( Desc->Type )
         {
             case EfiConventionalMemory:
+            case EfiPersistentMemory:
             {
                 ULONG64 End =
                     Desc->PhysicalStart + ( Desc->NumberOfPages * DEFAULT_PAGE_SIZE );
@@ -245,6 +261,43 @@ UefiMain( EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable )
     }
 
     SsPfnFreeHead = 0xffffff;
+
+    FreePool( SystemMemoryMap.Descriptor );
+
+    // get size of memory map
+    MemMap = gBS->GetMemoryMap( &SystemMemoryMap.MapSize,
+                                           SystemMemoryMap.Descriptor,
+                                           &SystemMemoryMap.Key,
+                                           &SystemMemoryMap.DescriptorSize,
+                                           &SystemMemoryMap.Version );
+
+    if( MemMap != EFI_BUFFER_TOO_SMALL )
+    {
+        DBG_ERROR( MemMap, L"Failed init Memory Map" );
+        getc( );
+        return 1;
+    }
+
+    // allocate memory for memory map
+    SystemMemoryMap.MapSize += 2 * SystemMemoryMap.DescriptorSize;
+    SystemMemoryMap.Descriptor = AllocateZeroPool( SystemMemoryMap.MapSize );
+
+    // get memory map
+    MemMap = gBS->GetMemoryMap( &SystemMemoryMap.MapSize,
+                                SystemMemoryMap.Descriptor,
+                                &SystemMemoryMap.Key,
+                                &SystemMemoryMap.DescriptorSize,
+                                &SystemMemoryMap.Version );
+
+    if( EFI_ERROR( MemMap ) )
+    {
+        DBG_ERROR( MemMap, L"Failed get Memory Map" );
+        getc( );
+        return 1;
+    }
+
+    NumberOfDescriptors =
+        SystemMemoryMap.MapSize / SystemMemoryMap.DescriptorSize;
 
     Desc = SystemMemoryMap.Descriptor;
 
@@ -304,9 +357,47 @@ UefiMain( EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable )
     DBG_INFO(
         L"PML4 Physical -> %p, MaxAddress -> %p\n", Pml4Physical, MaxAddress );
 
-    DumpPage( gPML4, 2 );
 
+    BlDbgBreak( );
 
+    ULONG64 NewStack;
+
+    AllocatePage( &NewStack );
+
+    MapPage( KERNEL_VA_STACK, NewStack, PAGE_FLAG_PRESENT | PAGE_FLAG_RW  );
+
+    ULONG64 CodePage;
+
+    AllocatePage( &CodePage );
+
+    ULONG64 HostCode = ALIGN_PAGE( &__hostcode );
+
+    CopyMem( ( PVOID )CodePage, ( PVOID )HostCode, DEFAULT_PAGE_SIZE );
+
+    MapPage( KERNEL_VA_BASE, CodePage, PAGE_FLAG_PRESENT | PAGE_FLAG_RW );
+
+    if( EFI_ERROR( MappingExists( Pml4Physical, KERNEL_VA_BASE ) ) )
+    {
+        DBG_ERROR( L"Error", L"Code page doesnt exit\n" );
+    }
+
+    if( EFI_ERROR( MappingExists( Pml4Physical, KERNEL_VA_STACK ) ) )
+    {
+        DBG_ERROR( L"Error", L"Stack page doesnt exit\n" );
+    }
+
+    ULONG64 SwitchPage = ALIGN_PAGE( &__switchcr3 );
+    MapPage( SwitchPage, SwitchPage, PAGE_FLAG_PRESENT | PAGE_FLAG_RW );
+
+    if( EFI_ERROR( MappingExists( Pml4Physical, SwitchPage ) ) )
+    {
+        DBG_ERROR( L"Error", L"Switch page doesnt exit\n" );
+    }
+
+    Print( L"SwitchPage->%p, Switchaddr->%p", SwitchPage, &__switchcr3 );
+
+    getc();
+    __switchcr3( Pml4Physical & ~0xFFF, KERNEL_VA_STACK_TOP, KERNEL_VA_BASE + ( ( ULONG64 )&__hostcode - HostCode ) );
     getc( );
 
     return EFI_SUCCESS;
@@ -328,8 +419,6 @@ InitalSetup(
     }
 
     DBG_INFO( L"handle-> %p", LoadedIamge->ImageBase );
-
-    BlDbgBreak( );
 
     gST->ConOut->ClearScreen( gST->ConOut );
 

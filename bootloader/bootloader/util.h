@@ -4,6 +4,12 @@
 #include "boot.h"
 #include "general.h"
 
+EFI_STATUS
+BLAPI
+DumpPage( 
+    ULONG64 Address, // base virtual address
+    ULONG64 Size // number of 8-byte entries
+);
 
 __forceinline
 VOID

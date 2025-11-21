@@ -13,12 +13,11 @@ extern "C" {
 #endif
 
     void __switchcr3( unsigned long long, unsigned long long, unsigned long long );
+    void __hostcode( void );
 
 #ifdef __cplusplus
 }
 #endif
-
-
 
 typedef enum _PFN_STATE
 {
@@ -36,44 +35,48 @@ PPFN_ENTRY SsPfn;
 ULONG64 SsPfnCount;
 ULONG64 SsPfnFreeHead;
 
-#define PLM4_INDEX(va) (((ULONG64)(va) >> 39) & 0x1FF)
+#define PML4_INDEX(va) (((ULONG64)(va) >> 39) & 0x1FF)
 #define PDPT_INDEX(va) (((ULONG64)(va) >> 30) & 0x1FF)
 #define PD_INDEX(va) (((ULONG64)(va) >> 21) & 0x1FF)
 #define PT_INDEX(va) (((ULONG64)(va) >> 12) & 0x1FF)
 
 #define DEFAULT_PAGE_SIZE 0x1000
-#define LARGE_PAGE_SIZE 0x200000
-#define HUGE_PAGE_SIZE 0x40000000
+#define LARGE_PAGE_SIZE   0x200000
+#define HUGE_PAGE_SIZE    0x40000000
 
 #define PAGE_SHIFT 12
-#define PFN_LIST_END 0xffffff
-
+#define PFN_LIST_END 0xFFFFFF
+                     
 #define PFN_TO_PHYSICAL_SIZE(pfn, size) ((pfn) << size)
 #define PFN_TO_PHYSICAL(pfn) (PFN_TO_PHYSICAL_SIZE(pfn, PAGE_SHIFT))
 
 #define PHYSICAL_TO_PFN_SIZE(adr, size) ((adr) >> size)
 #define PHYSICAL_TO_PFN(adr) (PHYSICAL_TO_PFN_SIZE(adr, PAGE_SHIFT))
 
+
 #define LOW_MEMORY_START 0x0000000000000000ULL
-#define LOW_MEMORY_END 0x00007FFFFFFFFFFFULL
+#define LOW_MEMORY_END   0x00007FFFFFFFFFFFULL
 
 #define HIGH_MEMORY_START 0xFFFF800000000000ULL
-#define HIGH_MEMORY_END 0xFFFFFFFFFFFFFFFFULL
+#define HIGH_MEMORY_END   0xFFFFFFFFFFFFFFFFULL
 
 #define DIRECT_MAP_BASE HIGH_MEMORY_START
 
 #define KERNEL_VA_BASE 0xFFFFFFFF80000000ULL
+#define KERNEL_VA_STACK_TOP ( KERNEL_VA_BASE - 0x1000 - 0x10 )
+#define KERNEL_VA_STACK ( KERNEL_VA_BASE - 0x2000 )
 
-#define ALIGN_PAGE(val) ((ULONG64)val & ~0xFFFull)
-#define PAGE_OFFSET(val) ((ULONG64)val & 0xFFFull)
 
-#define ALIGN_LARGE_PAGE(val) ((ULONG64)val & ~0xFFFFFull)
-#define LARGE_PAGE_OFFSET(val) ((ULONG64)val & 0xFFFFFull)
+#define ALIGN_PAGE( Value )  ( (ULONG64)Value & ~0xFFFull )
+#define PAGE_OFFSET( Value ) ( (ULONG64)Value & 0xFFFull  )
 
-#define ALIGN_HUGE_PAGE(val) ((ULONG64)val & ~0xFFFFFFFull)
-#define HUGE_PAGE_OFFSET(val) ((ULONG64)val & 0xFFFFFFFull
+#define ALIGN_LARGE_PAGE( Value )  ( (ULONG64)Value & ~0xFFFFFull )
+#define LARGE_PAGE_OFFSET( Value ) ( (ULONG64)Value & 0xFFFFFull  )
 
-// flag bits for entries
+#define ALIGN_HUGE_PAGE( Value )  ( (ULONG64)Value & ~0xFFFFFFFull )
+#define HUGE_PAGE_OFFSET( Value ) ( (ULONG64)Value & 0xFFFFFFFull  )
+
+
 #define PAGE_FLAG_PRESENT ( 1ull << 0 )
 #define PAGE_FLAG_RW      ( 1ull << 1 )
 #define PAGE_FLAG_USER    ( 1ull << 2 )
@@ -82,7 +85,7 @@ ULONG64 SsPfnFreeHead;
 
 // Makes a page entry with present and r/w and nx 
 #define MAKE_PAGE_ENTRY( Entry, NextTablePhysical )  \
-   (Entry) = ((NextTablePhysical) & 0x000FFFFFFFFFF000ull) | ( ( PAGE_FLAG_PRESENT | PAGE_FLAG_RW  | PAGE_FLAG_NX ) & 0xFFF0000000000FFFull );
+   (Entry) = ((NextTablePhysical) & 0x000FFFFFFFFFF000ull) | ( ( PAGE_FLAG_PRESENT | PAGE_FLAG_RW ) & 0xFFF0000000000FFFull );
 
 // Makes a page point to a physical page with desired flags
 #define MAKE_LEAF_ENTRY( Entry, PagePhysical, Flags ) \
@@ -233,15 +236,15 @@ MapPage(
 )
 {
     // Decompose vaddr to get table indexs
-    ULONG64 Pml4Index = PLM4_INDEX( VirtualAddress );
+    ULONG64 Pml4Index = PML4_INDEX( VirtualAddress );
     ULONG64 PdptIndex = PDPT_INDEX( VirtualAddress );
     ULONG64 PdIndex = PD_INDEX( VirtualAddress );
     ULONG64 PtIndex = PT_INDEX( VirtualAddress );
 
     ULONG64* Pml4t = gPML4;
-    ULONG64* Pdpt;
-    ULONG64* Pdt;
-    ULONG64* Pt;
+    ULONG64* Pdpt  = NULL;
+    ULONG64* Pdt   = NULL;
+    ULONG64* Pt    = NULL;
 
     if( !( Pml4t[ Pml4Index ] & PAGE_FLAG_PRESENT ) )
     {
@@ -290,12 +293,32 @@ MapPage(
 // MapLargePage maps a single 2MB or 1GB page, depending on 'size'.
 // Size must be either LARGE_PAGE_SIZE or LARGEST_PAGE_SIZE
 EFI_STATUS
-MapLargePage( ULONG64 vaddr, ULONG64 paddr, ULONG64 size, ULONG64 flags )
+MapLargePage( 
+    ULONG64 VirtualAddress,
+    ULONG64 PhysicalAddress, 
+    ULONG64 flags )
 {
-    ULONG64 pml4_index = PLM4_INDEX( vaddr );
-    ULONG64 pdpt_index = PDPT_INDEX( vaddr );
-    ULONG64 pd_index = PD_INDEX( vaddr );
-    ULONG64 pt_index = PT_INDEX( vaddr );
+    ULONG64 Pml4Index = PML4_INDEX( VirtualAddress );
+    ULONG64 PdptIndex = PDPT_INDEX( VirtualAddress );
+    ULONG64 PdIndex   = PD_INDEX( VirtualAddress );
+
+    ULONG64* Pml4t = gPML4;
+    ULONG64* Pdpt  = NULL;
+    ULONG64* Pd    = NULL;
+
+    if( !( Pml4t[ Pml4Index ] & PAGE_FLAG_PRESENT ) )
+    {
+        ULONG64 PdptPhysical;
+        AllocatePage( &PdptPhysical );
+        if( !PdptPhysical )
+        {
+            return EFI_OUT_OF_RESOURCES;
+        }
+        MAKE_PAGE_ENTRY( Pml4t[ Pml4Index ], PdptPhysical );
+    }
+
+   // Pdpt = ( ULONG64* )( Pml4t[ Pml4Index ] )
+
 
     return EFI_SUCCESS;
 }
@@ -374,6 +397,7 @@ MapKernel(
     UINT64 KernelBase
 )
 {
+
     return EFI_SUCCESS;
 }
 

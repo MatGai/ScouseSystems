@@ -1,5 +1,39 @@
 #include "util.h"
 
+EFI_STATUS
+BLAPI
+DumpPage(
+    ULONG64 Address, // base virtual address
+    ULONG64 Size // number of 8-byte entries
+)
+{
+    ULONG64 start = Address;
+    ULONG64 end = Address + ( Size * sizeof( ULONG64 ) );
+
+    for( ULONG64 addr = start; addr < end; addr += 0x10 ) // 16 bytes per line
+    {
+        // First 8 bytes
+        ULONG64* p0 = ( ULONG64* )( UINTN )addr;
+        ULONG64 v0 = *p0;
+
+        Print( L"0x%p -> 0x%p", addr, v0 );
+
+        // Second 8 bytes (only if still inside range)
+        if( addr + 0x8 < end )
+        {
+            ULONG64* p1 = ( ULONG64* )( UINTN )( addr + 0x8 );
+            ULONG64 v1 = *p1;
+
+            Print( L" | 0x%p -> 0x%p", addr + 0x8, v1 );
+        }
+
+        Print( L"\n" );
+    }
+
+    return EFI_SUCCESS;
+};
+
+
 EFI_INPUT_KEY
 BLAPI
 getc(

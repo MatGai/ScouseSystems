@@ -103,10 +103,8 @@
     <MASM Include="special.masm">
       <Filter>registers</Filter>
     </MASM>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="pagemanager.masm">
+    <MASM Include="pagemanager.masm">
       <Filter>paging</Filter>
-    </None>
+    </MASM>
   </ItemGroup>
 </Project>

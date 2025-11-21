@@ -2,6 +2,7 @@
 .code
 
 PUBLIC __switchcr3
+PUBLIC __hostcode
 
 
 ; rcx rdx r8  r9
@@ -16,6 +17,26 @@ __switchcr3 PROC
 	ret
 
 __switchcr3 ENDP
+
+
+__hostcode PROC
+
+	mov rax, 0BEEFh
+	push rax
+	xor rax, rax
+	pop rax
+	cmp rax, 0BEEFh
+	jz notright
+	mov rax, 1
+	jmp carryon
+
+notright:
+	mov rax, 0
+
+carryon:
+	xor rax, rax
+
+__hostcode ENDP
 
 
 END
