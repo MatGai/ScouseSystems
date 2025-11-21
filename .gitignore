@@ -19,3 +19,5 @@ debugger/stdout.txt
 /bootloader/x64
 /kernel/x64
 /bootloader/bootloader.map
+/debugger/qemu.log
+*.log
