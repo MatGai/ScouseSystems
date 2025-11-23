@@ -35,10 +35,10 @@ PPFN_ENTRY SsPfn;
 ULONG64 SsPfnCount;
 ULONG64 SsPfnFreeHead;
 
-#define PML4_INDEX(va) (((ULONG64)(va) >> 39) & 0x1FF)
-#define PDPT_INDEX(va) (((ULONG64)(va) >> 30) & 0x1FF)
-#define PD_INDEX(va) (((ULONG64)(va) >> 21) & 0x1FF)
-#define PT_INDEX(va) (((ULONG64)(va) >> 12) & 0x1FF)
+#define PML4_INDEX( Value ) ( ( (ULONG64)( Value ) >> 39 ) & 0x1FF )
+#define PDPT_INDEX( Value ) ( ( (ULONG64)( Value ) >> 30 ) & 0x1FF )
+#define PD_INDEX( Value ) ( ( (ULONG64)( Value ) >> 21 ) & 0x1FF )
+#define PT_INDEX( Value ) ( ( (ULONG64)( Value ) >> 12 ) & 0x1FF )
 
 #define DEFAULT_PAGE_SIZE 0x1000
 #define LARGE_PAGE_SIZE   0x200000
@@ -53,19 +53,18 @@ ULONG64 SsPfnFreeHead;
 #define PHYSICAL_TO_PFN_SIZE(adr, size) ((adr) >> size)
 #define PHYSICAL_TO_PFN(adr) (PHYSICAL_TO_PFN_SIZE(adr, PAGE_SHIFT))
 
-
 #define LOW_MEMORY_START 0x0000000000000000ULL
 #define LOW_MEMORY_END   0x00007FFFFFFFFFFFULL
 
 #define HIGH_MEMORY_START 0xFFFF800000000000ULL
 #define HIGH_MEMORY_END   0xFFFFFFFFFFFFFFFFULL
+#define PML4_HIGH_MEMORY_START 256 // PML4[ 256 ] = 0xFFFF_8000_0000_0000
 
 #define DIRECT_MAP_BASE HIGH_MEMORY_START
 
 #define KERNEL_VA_BASE 0xFFFFFFFF80000000ULL
 #define KERNEL_VA_STACK_TOP ( KERNEL_VA_BASE - 0x1000 - 0x10 )
 #define KERNEL_VA_STACK ( KERNEL_VA_BASE - 0x2000 )
-
 
 #define ALIGN_PAGE( Value )  ( (ULONG64)Value & ~0xFFFull )
 #define PAGE_OFFSET( Value ) ( (ULONG64)Value & 0xFFFull  )
@@ -76,20 +75,24 @@ ULONG64 SsPfnFreeHead;
 #define ALIGN_HUGE_PAGE( Value )  ( (ULONG64)Value & ~0xFFFFFFFull )
 #define HUGE_PAGE_OFFSET( Value ) ( (ULONG64)Value & 0xFFFFFFFull  )
 
-
 #define PAGE_FLAG_PRESENT ( 1ull << 0 )
 #define PAGE_FLAG_RW      ( 1ull << 1 )
 #define PAGE_FLAG_USER    ( 1ull << 2 )
 #define PAGE_FLAG_PS      ( 1ull << 7 )
 #define PAGE_FLAG_NX      ( 1ull << 63 )
+#define PAGE_PFN_MASK     0x000FFFFFFFFFF000ull
+
+#define HUGE_PAGE_MAPPING_INDEX 1
+#define LARGE_PAGE_MAPPING_INDEX 2
+#define PAGE_MAPPING_INDEX 3
 
 // Makes a page entry with present and r/w and nx 
 #define MAKE_PAGE_ENTRY( Entry, NextTablePhysical )  \
-   (Entry) = ((NextTablePhysical) & 0x000FFFFFFFFFF000ull) | ( ( PAGE_FLAG_PRESENT | PAGE_FLAG_RW ) & 0xFFF0000000000FFFull );
+   ( Entry ) = ( ( NextTablePhysical ) & PAGE_PFN_MASK ) | ( ( PAGE_FLAG_PRESENT | PAGE_FLAG_RW ) & PAGE_PFN_MASK );
 
 // Makes a page point to a physical page with desired flags
 #define MAKE_LEAF_ENTRY( Entry, PagePhysical, Flags ) \
-   (Entry) = ((PagePhysical) & 0x000FFFFFFFFFF000ull) | (Flags & 0xFFF0000000000FFFull);
+   ( Entry ) = ( ( PagePhysical ) & PAGE_PFN_MASK ) | ( Flags & PAGE_PFN_MASK );
 
 typedef struct _BL_EFI_MEMORY_MAP
 {
@@ -223,6 +226,53 @@ SsPagingInit(
     return FreePage;
 }
 
+EFI_STATUS
+UefiMapTables(
+    ULONG64* Pml4,
+    ULONG64 VirtualAddress,
+    ULONG64 PhysicalAddress,
+    ULONG64 TableEnd,
+    ULONG64 Flags
+)
+{
+    if( TableEnd < 1 || TableEnd > 3 )
+    {
+        return EFI_INVALID_PARAMETER;
+    }
+
+    ULONG64 EntryIndex[0x4] = 
+    {
+        PML4_INDEX( VirtualAddress ),
+        PDPT_INDEX( VirtualAddress ),
+        PD_INDEX( VirtualAddress ),
+        PT_INDEX( VirtualAddress )
+    };
+
+    ULONG64* Table = Pml4;
+
+    for( UINT32 i = 0; i < TableEnd; i++ )
+    {
+        ULONG64* TableEntry = &Table[ EntryIndex[ i ] ];
+        if( !( *TableEntry & PAGE_FLAG_PRESENT ) )
+        {
+            ULONG64 NextTablePhysical;
+            AllocatePage( &NextTablePhysical );
+            if( !NextTablePhysical )
+            {
+                return EFI_OUT_OF_RESOURCES;
+            }
+
+            MAKE_PAGE_ENTRY( *TableEntry, NextTablePhysical );
+        }
+
+        Table = ( ULONG64* )( *TableEntry & 0x000FFFFFFFFFF000ull );;
+    }
+
+    MAKE_LEAF_ENTRY( Table[ EntryIndex[ TableEnd ] ], PhysicalAddress, Flags );
+
+    return EFI_SUCCESS;
+}
+
 // MapPage maps a single 4KB page so that virtual address 'vaddr'
 // maps to physical address 'paddr' with the specified 'flags' (for the PTE).
 // This function walks the 4-level page table hierarchy, allocating lower-level
@@ -235,92 +285,52 @@ MapPage(
     ULONG64 Flags
 )
 {
-    // Decompose vaddr to get table indexs
-    ULONG64 Pml4Index = PML4_INDEX( VirtualAddress );
-    ULONG64 PdptIndex = PDPT_INDEX( VirtualAddress );
-    ULONG64 PdIndex = PD_INDEX( VirtualAddress );
-    ULONG64 PtIndex = PT_INDEX( VirtualAddress );
+    EFI_STATUS St = UefiMapTables(
+        gPML4,
+        VirtualAddress,
+        PhysicalAddress,
+        PAGE_MAPPING_INDEX,
+        Flags
+    );
 
-    ULONG64* Pml4t = gPML4;
-    ULONG64* Pdpt  = NULL;
-    ULONG64* Pdt   = NULL;
-    ULONG64* Pt    = NULL;
-
-    if( !( Pml4t[ Pml4Index ] & PAGE_FLAG_PRESENT ) )
-    {
-        ULONG64 PdptPhysical;
-        AllocatePage( &PdptPhysical );
-        if( !PdptPhysical )
-        {
-            return EFI_OUT_OF_RESOURCES;
-        }
-        MAKE_PAGE_ENTRY( Pml4t[ Pml4Index ], PdptPhysical );
-    }
-
-    Pdpt = ( ULONG64* )( Pml4t[ Pml4Index ] & 0x000FFFFFFFFFF000ull );
-
-    if( !( Pdpt[ PdptIndex ] & PAGE_FLAG_PRESENT ) )
-    {
-        ULONG64 PdPhysical;
-        AllocatePage( &PdPhysical );
-        if( !PdPhysical )
-        {
-            return EFI_OUT_OF_RESOURCES;
-        }
-        MAKE_PAGE_ENTRY( Pdpt[ PdptIndex ], PdPhysical );
-    }
-
-    Pdt = ( ULONG64* )( Pdpt[ PdptIndex ] & 0x000FFFFFFFFFF000ull );
-
-    if( !( Pdt[ PdIndex ] & PAGE_FLAG_PRESENT ) )
-    {
-        ULONG64 PtPhysical;
-        AllocatePage( &PtPhysical );
-        if( !PtPhysical )
-        {
-            return EFI_OUT_OF_RESOURCES;
-        }
-        MAKE_PAGE_ENTRY( Pdt[ PdIndex ], PtPhysical );
-    }
-
-    Pt = ( ULONG64* )( Pdt[ PdIndex ] & 0x000FFFFFFFFFF000ull );
-
-    MAKE_LEAF_ENTRY( Pt[ PtIndex ], PhysicalAddress, Flags );
-
-    return EFI_SUCCESS;
+    return St;
 }
 
-// MapLargePage maps a single 2MB or 1GB page, depending on 'size'.
-// Size must be either LARGE_PAGE_SIZE or LARGEST_PAGE_SIZE
+// MapLargePage maps a single 2MiB page
 EFI_STATUS
-MapLargePage( 
+MapLargePage(
     ULONG64 VirtualAddress,
-    ULONG64 PhysicalAddress, 
-    ULONG64 flags )
+    ULONG64 PhysicalAddress,
+    ULONG64 Flags
+)
 {
-    ULONG64 Pml4Index = PML4_INDEX( VirtualAddress );
-    ULONG64 PdptIndex = PDPT_INDEX( VirtualAddress );
-    ULONG64 PdIndex   = PD_INDEX( VirtualAddress );
+    EFI_STATUS St = UefiMapTables(
+        gPML4,
+        VirtualAddress,
+        PhysicalAddress,
+        LARGE_PAGE_MAPPING_INDEX,
+        Flags | PAGE_FLAG_PS
+    );
 
-    ULONG64* Pml4t = gPML4;
-    ULONG64* Pdpt  = NULL;
-    ULONG64* Pd    = NULL;
+    return St;
+}
 
-    if( !( Pml4t[ Pml4Index ] & PAGE_FLAG_PRESENT ) )
-    {
-        ULONG64 PdptPhysical;
-        AllocatePage( &PdptPhysical );
-        if( !PdptPhysical )
-        {
-            return EFI_OUT_OF_RESOURCES;
-        }
-        MAKE_PAGE_ENTRY( Pml4t[ Pml4Index ], PdptPhysical );
-    }
+EFI_STATUS
+MapHugePage(
+    ULONG64 VirtualAddress,
+    ULONG64 PhysicalAddress,
+    ULONG64 Flags
+)
+{
+    EFI_STATUS St = UefiMapTables( 
+        gPML4, 
+        VirtualAddress, 
+        PhysicalAddress, 
+        HUGE_PAGE_MAPPING_INDEX, 
+        Flags | PAGE_FLAG_PS 
+    );
 
-   // Pdpt = ( ULONG64* )( Pml4t[ Pml4Index ] )
-
-
-    return EFI_SUCCESS;
+    return St;
 }
 
 // DirectMapRange maps all physical memory from physStart to physEnd
@@ -328,56 +338,44 @@ MapLargePage(
 // The caller must ensure that physStart and physEnd are page-aligned.
 EFI_STATUS
 DirectMapRange(
-    ULONG64 PhysStart,
-    ULONG64 PhysEnd
+    ULONG64 PhysicalStart,
+    ULONG64 PhysicalEnd
 )
 {
-    //   if( ( PhysStart & DEFAULT_PAGE_SIZE - 1 ) ||
-    //       ( PhysEnd & DEFAULT_PAGE_SIZE - 1 ) || ( PhysStart >= PhysEnd ) )
-    //   {
-    //       return EFI_INVALID_PARAMETER;
-    //   }
-    //
-    //   ULONG64 Phys = PhysStart;
-    //   EFI_STATUS Status;
-    //   while( Phys < PhysEnd )
-    //   {
-    //       ULONG64 Remaining = PhysEnd - Phys;
-    //       ULONG64 VA = DIRECT_MAP_BASE + Phys;
-    //
-    //       if( ( ( Phys | VA ) & ( HUGE_PAGE_SIZE - 1 ) ) == 0 &&
-    //           Remaining >= HUGE_PAGE_SIZE )
-    //       {
-    //           Status = MapLargePage( VA, Phys, HUGE_PAGE_SIZE,
-    //                                  FLAG_PRESENT | FLAG_RW | FLAG_NX );
-    //           if( EFI_ERROR( Status ) )
-    //           {
-    //               return Status;
-    //           }
-    //           Phys += HUGE_PAGE_SIZE;
-    //       }
-    //       else if( ( ( Phys | VA ) & ( LARGE_PAGE_SIZE - 1 ) ) == 0 &&
-    //                Remaining >= LARGE_PAGE_SIZE )
-    //       {
-    //           Status = MapLargePage( VA, Phys, LARGE_PAGE_SIZE,
-    //                                  FLAG_PRESENT | FLAG_RW | FLAG_NX );
-    //           if( EFI_ERROR( Status ) )
-    //           {
-    //               return Status;
-    //           }
-    //           Phys += LARGE_PAGE_SIZE;
-    //       }
-    //       else
-    //       {
-    //           Status = MapPage( VA, Phys, FLAG_PRESENT | FLAG_RW | FLAG_NX );
-    //           if( EFI_ERROR( Status ) )
-    //           {
-    //               return Status;
-    //           }
-    //           Phys += DEFAULT_PAGE_SIZE;
-    //       }
-    //   }
-        // ReloadCR3(); // Flush the TLB
+    if( PhysicalStart != ALIGN_PAGE( PhysicalStart ) || 
+        PhysicalEnd != ALIGN_PAGE( PhysicalEnd )     || 
+        PhysicalStart >= PhysicalEnd )
+    {
+        return EFI_INVALID_PARAMETER;
+    }
+
+    ULONG64 CurrentPhysical = PhysicalStart;    
+    EFI_STATUS St;
+    ULONG64 Flags = PAGE_FLAG_PRESENT | PAGE_FLAG_RW;
+
+    while( CurrentPhysical < PhysicalEnd )
+    {
+        ULONG64 VirtualAddress = /*DIRECT_MAP_BASE + */CurrentPhysical;
+        ULONG64 Remaining = PhysicalEnd - CurrentPhysical;
+
+        if( Remaining >= HUGE_PAGE_SIZE  )
+        {
+            MapHugePage( VirtualAddress, CurrentPhysical, Flags );
+            CurrentPhysical += HUGE_PAGE_SIZE;
+            continue;
+        }
+        
+        if ( Remaining >= LARGE_PAGE_SIZE )
+        {
+            MapLargePage( VirtualAddress, CurrentPhysical, Flags );
+            CurrentPhysical += LARGE_PAGE_SIZE;
+            continue;
+        }
+
+        MapPage( VirtualAddress, CurrentPhysical, Flags );
+        CurrentPhysical += DEFAULT_PAGE_SIZE;
+    }
+
     return EFI_SUCCESS;
 }
 
@@ -393,8 +391,8 @@ UnmapPage(
 EFI_STATUS
 BLAPI
 MapKernel(
-    UINT64 KernelPhys,
-    UINT64 KernelBase
+    ULONG64 KernelPhys,
+    ULONG64 KernelBase
 )
 {
 

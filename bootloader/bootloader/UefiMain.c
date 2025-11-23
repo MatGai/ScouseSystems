@@ -357,6 +357,11 @@ UefiMain( EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable )
     DBG_INFO(
         L"PML4 Physical -> %p, MaxAddress -> %p\n", Pml4Physical, MaxAddress );
 
+    //DirectMapRange( 0, MaxAddress );
+
+    //__writecr3( Pml4Physical );
+
+    //DBG_INFO(L"Has not crashed!\n");
 
     BlDbgBreak( );
 
@@ -364,7 +369,11 @@ UefiMain( EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable )
 
     AllocatePage( &NewStack );
 
-    MapPage( KERNEL_VA_STACK, NewStack, PAGE_FLAG_PRESENT | PAGE_FLAG_RW  );
+    EFI_STATUS St = MapPage( KERNEL_VA_STACK, NewStack, PAGE_FLAG_PRESENT | PAGE_FLAG_RW  );
+    if (EFI_ERROR(St))
+    {
+        DBG_ERROR(St, L"Failed\n");
+    }
 
     ULONG64 CodePage;
 
@@ -397,7 +406,7 @@ UefiMain( EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable )
     Print( L"SwitchPage->%p, Switchaddr->%p", SwitchPage, &__switchcr3 );
 
     getc();
-    __switchcr3( Pml4Physical & ~0xFFF, KERNEL_VA_STACK_TOP, KERNEL_VA_BASE + ( ( ULONG64 )&__hostcode - HostCode ) );
+    __switchcr3( Pml4Physical & ~0xFFF, KERNEL_VA_STACK_TOP, SwitchPage + ( ( ULONG64 )&__hostcode - HostCode ) );
     getc( );
 
     return EFI_SUCCESS;

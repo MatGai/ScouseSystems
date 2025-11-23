@@ -42,6 +42,7 @@ typedef EFI_STATUS BL_STATUS;
 
 #define DBG_INFO(Message, ...)   PRINT_DEBUG_INTERNAL(L"Info",   Message, ##__VA_ARGS__)
 #define DBG_ERROR(Status, Message, ...)  PRINT_DEBUG_INTERNAL(Status, Message, ##__VA_ARGS__)
+#define DBG_ERRORS(Message, ...)  PRINT_DEBUG_INTERNAL(L"Error", Message, ##__VA_ARGS__)
 
 #define DBG_ASSERT(Expression, Return, Message, ...)                             \
     do {                                                                         \
