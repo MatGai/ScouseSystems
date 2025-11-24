@@ -155,6 +155,8 @@ UefiMain( EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable )
         return Status;
     }
 
+    Print( L"VirtualBase -> %p, Base -> %p \n", KernelImage.VirtualBase, KernelImage.Base  );
+
     //
     // now we need to get details of memory, luckily efi provides this to us.
     // with memory map we are able to get what physical memory is not in use.
@@ -357,13 +359,12 @@ UefiMain( EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable )
     DBG_INFO(
         L"PML4 Physical -> %p, MaxAddress -> %p\n", Pml4Physical, MaxAddress );
 
-    //DirectMapRange( 0, MaxAddress );
+    DirectMapRange( 0, MaxAddress );
 
-    //__writecr3( Pml4Physical );
+    __writecr3( Pml4Physical );
 
-    //DBG_INFO(L"Has not crashed!\n");
+    DBG_INFO(L"Has not crashed!\n");
 
-    BlDbgBreak( );
 
     ULONG64 NewStack;
 
@@ -379,7 +380,7 @@ UefiMain( EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable )
 
     AllocatePage( &CodePage );
 
-    ULONG64 HostCode = ALIGN_PAGE( &__hostcode );
+    ULONG64 HostCode = ALIGN_PAGE( &__HostCode );
 
     CopyMem( ( PVOID )CodePage, ( PVOID )HostCode, DEFAULT_PAGE_SIZE );
 
@@ -405,8 +406,13 @@ UefiMain( EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable )
 
     Print( L"SwitchPage->%p, Switchaddr->%p", SwitchPage, &__switchcr3 );
 
+    Print( L"HostCode -> %p, Codeaddr -> %p, Codepage -> %p\n", HostCode, &__HostCode, CodePage );
+
+
+    BlDbgBreak( );
+
     getc();
-    __switchcr3( Pml4Physical & ~0xFFF, KERNEL_VA_STACK_TOP, SwitchPage + ( ( ULONG64 )&__hostcode - HostCode ) );
+    __switchcr3( Pml4Physical & ~0xFFF, KERNEL_VA_STACK_TOP, KERNEL_VA_BASE + ( ( ULONG64 )&__HostCode - HostCode ) );
     getc( );
 
     return EFI_SUCCESS;

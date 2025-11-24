@@ -80,19 +80,19 @@ ULONG64 SsPfnFreeHead;
 #define PAGE_FLAG_USER    ( 1ull << 2 )
 #define PAGE_FLAG_PS      ( 1ull << 7 )
 #define PAGE_FLAG_NX      ( 1ull << 63 )
-#define PAGE_PFN_MASK     0x000FFFFFFFFFF000ull
+#define PAGE_PHYSICAL_MASK     0x000FFFFFFFFFF000ull
 
 #define HUGE_PAGE_MAPPING_INDEX 1
 #define LARGE_PAGE_MAPPING_INDEX 2
 #define PAGE_MAPPING_INDEX 3
 
-// Makes a page entry with present and r/w and nx 
+// Makes a page entry with present and r/w
 #define MAKE_PAGE_ENTRY( Entry, NextTablePhysical )  \
-   ( Entry ) = ( ( NextTablePhysical ) & PAGE_PFN_MASK ) | ( ( PAGE_FLAG_PRESENT | PAGE_FLAG_RW ) & PAGE_PFN_MASK );
+   ( Entry ) = ( ( NextTablePhysical ) & PAGE_PHYSICAL_MASK ) | ( ( PAGE_FLAG_PRESENT | PAGE_FLAG_RW ) & ~PAGE_PHYSICAL_MASK );
 
 // Makes a page point to a physical page with desired flags
 #define MAKE_LEAF_ENTRY( Entry, PagePhysical, Flags ) \
-   ( Entry ) = ( ( PagePhysical ) & PAGE_PFN_MASK ) | ( Flags & PAGE_PFN_MASK );
+   ( Entry ) = ( ( PagePhysical ) & PAGE_PHYSICAL_MASK ) | ( Flags & ~PAGE_PHYSICAL_MASK );
 
 typedef struct _BL_EFI_MEMORY_MAP
 {
@@ -252,8 +252,7 @@ UefiMapTables(
 
     for( UINT32 i = 0; i < TableEnd; i++ )
     {
-        ULONG64* TableEntry = &Table[ EntryIndex[ i ] ];
-        if( !( *TableEntry & PAGE_FLAG_PRESENT ) )
+        if( !( Table[ EntryIndex[ i ] ] & PAGE_FLAG_PRESENT ) )
         {
             ULONG64 NextTablePhysical;
             AllocatePage( &NextTablePhysical );
@@ -261,11 +260,13 @@ UefiMapTables(
             {
                 return EFI_OUT_OF_RESOURCES;
             }
+            
+            Print( L"Physical alloc -> %p\n", NextTablePhysical );
 
-            MAKE_PAGE_ENTRY( *TableEntry, NextTablePhysical );
+            MAKE_PAGE_ENTRY( Table[ EntryIndex[ i ] ], NextTablePhysical );
         }
 
-        Table = ( ULONG64* )( *TableEntry & 0x000FFFFFFFFFF000ull );;
+        Table = ( ULONG64* )( Table[ EntryIndex[ i ] ] & PAGE_PHYSICAL_MASK );
     }
 
     MAKE_LEAF_ENTRY( Table[ EntryIndex[ TableEnd ] ], PhysicalAddress, Flags );
@@ -391,12 +392,23 @@ UnmapPage(
 EFI_STATUS
 BLAPI
 MapKernel(
-    ULONG64 KernelPhys,
-    ULONG64 KernelBase
+    ULONG64 KernelPhysical,
+    ULONG64 NewKernelBase
 )
 {
 
     return EFI_SUCCESS;
+}
+
+
+
+EFI_STATUS
+BLAPI
+__HostCode(
+
+)
+{
+    Print( L"Hello from kernel !" );
 }
 
 #endif  // !PAGEMANAGER_H
