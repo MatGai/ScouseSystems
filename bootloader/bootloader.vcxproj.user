@@ -9,21 +9,21 @@
     <LocalDebuggerCommandArgumentsHistory>-name "ScouseSystem Qemu Debugger QemuDebug" -drive file=OVMF_CODE-need-smm.fd,if=pflash,format=raw,unit=0,readonly=on -drive file=OVMF_VARS-need-smm.fd,if=pflash,format=raw,unit=1 -drive file=fat:rw:..\x64\QemuDebug\,media=disk,if=virtio,format=raw -drive file=UefiShell.iso,format=raw -m 4096 -machine q35,smm=on -nodefaults -vga std -global driver=cfi.pflash01,property=secure,value=on -global ICH9-LPC.disable_s3=1 -d int -D qemu.log  -no-reboot -no-shutdown            |</LocalDebuggerCommandArgumentsHistory>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='QemuDebugIDA|x64'">
-    <LocalDebuggerCommand>..\debugger\qemu.exe</LocalDebuggerCommand>
-    <LocalDebuggerCommandArguments>-name "ScouseSystem Qemu Debugger $(configuration)" -drive file=OVMF_CODE-need-smm.fd,if=pflash,format=raw,unit=0,readonly=on -drive file=OVMF_VARS-need-smm.fd,if=pflash,format=raw,unit=1 -drive file=fat:rw:..\$(Platform)\$(Configuration)\,media=disk,if=virtio,format=raw -drive file=UefiShell.iso,format=raw -m 4096 -machine q35,smm=on -nodefaults -vga std -global driver=cfi.pflash01,property=secure,value=on -global ICH9-LPC.disable_s3=1 -d int -D qemuida.log -s -S  </LocalDebuggerCommandArguments>
-    <LocalDebuggerWorkingDirectory>..\debugger\</LocalDebuggerWorkingDirectory>
+    <LocalDebuggerCommand>$(SolutionDir)..\debugger\qemu.exe</LocalDebuggerCommand>
+    <LocalDebuggerCommandArguments>-name "ScouseSystem $(configuration)" -drive file=OVMF_CODE-need-smm.fd,if=pflash,format=raw,unit=0,readonly=on -drive file=OVMF_VARS-need-smm.fd,if=pflash,format=raw,unit=1 -drive file=fat:rw:..\$(Platform)\$(Configuration)\,media=disk,if=virtio,format=raw -drive file=UefiShell.iso,format=raw -m 4096 -machine q35,smm=on -nodefaults -vga std -global driver=cfi.pflash01,property=secure,value=on -global ICH9-LPC.disable_s3=1 -d int -D qemuida.log -s -S  </LocalDebuggerCommandArguments>
+    <LocalDebuggerWorkingDirectory>$(SolutionDir)..\debugger\</LocalDebuggerWorkingDirectory>
     <LocalDebuggerDebuggerType>Auto</LocalDebuggerDebuggerType>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerCommandArgumentsHistory>-name "ScouseSystem Qemu Debugger QemuDebugIDA" -drive file=OVMF_CODE-need-smm.fd,if=pflash,format=raw,unit=0,readonly=on -drive file=OVMF_VARS-need-smm.fd,if=pflash,format=raw,unit=1 -drive file=fat:rw:..\x64\QemuDebugIDA\,media=disk,if=virtio,format=raw -drive file=UefiShell.iso,format=raw -m 4096 -machine q35,smm=on -nodefaults -vga std -global driver=cfi.pflash01,property=secure,value=on -global ICH9-LPC.disable_s3=1 -s -S  |-name "ScouseSystem Qemu Debugger QemuDebugIDA" -drive file=OVMF_CODE-need-smm.fd,if=pflash,format=raw,unit=0,readonly=on -drive file=OVMF_VARS-need-smm.fd,if=pflash,format=raw,unit=1 -drive file=fat:rw:..\x64\QemuDebugIDA\,media=disk,if=virtio,format=raw -drive file=UefiShell.iso,format=raw -m 4096 -machine q35,smm=on -nodefaults -vga std -global driver=cfi.pflash01,property=secure,value=on -global ICH9-LPC.disable_s3=1 -d int -D qemuida.log -s -S  |</LocalDebuggerCommandArgumentsHistory>
+    <LocalDebuggerCommandArgumentsHistory>-name "ScouseSystem Qemu Debugger QemuDebugIDA" -drive file=OVMF_CODE-need-smm.fd,if=pflash,format=raw,unit=0,readonly=on -drive file=OVMF_VARS-need-smm.fd,if=pflash,format=raw,unit=1 -drive file=fat:rw:..\x64\QemuDebugIDA\,media=disk,if=virtio,format=raw -drive file=UefiShell.iso,format=raw -m 4096 -machine q35,smm=on -nodefaults -vga std -global driver=cfi.pflash01,property=secure,value=on -global ICH9-LPC.disable_s3=1 -s -S  |-name "ScouseSystem Qemu Debugger QemuDebugIDA" -drive file=OVMF_CODE-need-smm.fd,if=pflash,format=raw,unit=0,readonly=on -drive file=OVMF_VARS-need-smm.fd,if=pflash,format=raw,unit=1 -drive file=fat:rw:..\x64\QemuDebugIDA\,media=disk,if=virtio,format=raw -drive file=UefiShell.iso,format=raw -m 4096 -machine q35,smm=on -nodefaults -vga std -global driver=cfi.pflash01,property=secure,value=on -global ICH9-LPC.disable_s3=1 -d int -D qemuida.log -s -S  |-name "ScouseSystem QemuDebugIDA" -drive file=OVMF_CODE-need-smm.fd,if=pflash,format=raw,unit=0,readonly=on -drive file=OVMF_VARS-need-smm.fd,if=pflash,format=raw,unit=1 -drive file=fat:rw:..\x64\QemuDebugIDA\,media=disk,if=virtio,format=raw -drive file=UefiShell.iso,format=raw -m 4096 -machine q35,smm=on -nodefaults -vga std -global driver=cfi.pflash01,property=secure,value=on -global ICH9-LPC.disable_s3=1 -d int -D qemuida.log -s -S  |</LocalDebuggerCommandArgumentsHistory>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='QemuRun|x64'">
-    <LocalDebuggerCommand>..\debugger\qemu.exe</LocalDebuggerCommand>
+    <LocalDebuggerCommand>$(SolutionDir)..\debugger\qemu.exe</LocalDebuggerCommand>
     <LocalDebuggerCommandArguments>-name "ScouseSystem Qemu Debugger $(configuration)" -drive file=OVMF_CODE-need-smm.fd,if=pflash,format=raw,unit=0,readonly=on -drive file=OVMF_VARS-need-smm.fd,if=pflash,format=raw,unit=1 -drive file=fat:rw:..\$(Platform)\$(Configuration)\,media=disk,if=virtio,format=raw -drive file=UefiShell.iso,format=raw -m 512 -machine q35,smm=on -nodefaults -vga std -global driver=cfi.pflash01,property=secure,value=on -global ICH9-LPC.disable_s3=1</LocalDebuggerCommandArguments>
-    <LocalDebuggerWorkingDirectory>..\..\debugger\</LocalDebuggerWorkingDirectory>
-    <LocalDebuggerDebuggerType>Script</LocalDebuggerDebuggerType>
+    <LocalDebuggerWorkingDirectory>$(SolutionDir)..\debugger\</LocalDebuggerWorkingDirectory>
+    <LocalDebuggerDebuggerType>Auto</LocalDebuggerDebuggerType>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup>
-    <ShowAllFiles>true</ShowAllFiles>
+    <ShowAllFiles>false</ShowAllFiles>
   </PropertyGroup>
 </Project>

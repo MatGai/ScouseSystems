@@ -77,6 +77,8 @@ FindExeFile( _In_ PCWSTR FileName, _Inout_ PBL_LDR_LOADED_IMAGE_INFO FileInfo )
     return EFI_SUCCESS;
 };
 
+
+
 EFI_STATUS
 MappingExists(
     ULONG64 Pml4,
@@ -405,7 +407,19 @@ UefiMain( EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable )
     }
 
     Print( L"SwitchPage->%p, Switchaddr->%p\n", SwitchPage, &__switchcr3 );
-    
+
+    ULONG64 start = __readtscserial( );
+
+    EFI_STATUS st = gBS->Stall( 1000000 );
+    if( EFI_ERROR( st ) )
+        return st;
+
+    ULONG64 end = __readtscserial( );
+
+    ULONG64 frequency = end - start;
+
+    Print( L"Cycles per sec -> %llu\n", frequency );
+
     BlDbgBreak( );
 
     Print(L"HostCode -> %p, Codeaddr -> %p, Codepage -> %p\n", HostCode, &__HostCode, CodePage);

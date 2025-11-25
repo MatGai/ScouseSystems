@@ -3,7 +3,8 @@
 
 PUBLIC __switchcr3
 PUBLIC __hostcode
-
+PUBLIC __readtsc
+PUBLIC __readtscserial
 
 ; rcx rdx r8  r9
 
@@ -37,6 +38,31 @@ carryon:
 	xor rax, rax
 
 __hostcode ENDP
+
+__readtsc PROC
+    rdtsc          
+    shl rdx, 32
+    or  rax, rdx
+    ret
+__readtsc ENDP
+
+__readtscserial PROC
+    push rbx
+
+    mov eax, 0
+    cpuid              
+    rdtsc
+    shl rdx, 32
+    or  rax, rdx
+    mov r8, rax
+
+    mov eax, 0
+    cpuid              
+
+    mov rax, r8
+    pop rbx
+    ret
+__readtscserial ENDP
 
 
 END

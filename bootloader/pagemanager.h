@@ -14,6 +14,8 @@ extern "C" {
 
     void __switchcr3( unsigned long long, unsigned long long, unsigned long long );
     void __hostcode( void );
+    unsigned long long __readtsc( void );
+    unsigned long long __readtscserial( void );
 
 #ifdef __cplusplus
 }
