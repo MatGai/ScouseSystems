@@ -155,7 +155,7 @@ UefiMain( EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable )
         return Status;
     }
 
-    Print( L"VirtualBase -> %p, Base -> %p \n", KernelImage.VirtualBase, KernelImage.Base  );
+    Print( L"VirtualBase -> %p, Base -> %p , Entry %p\n", KernelImage.VirtualBase, KernelImage.Base, KernelImage.EntryPoint  );
 
     //
     // now we need to get details of memory, luckily efi provides this to us.
@@ -404,16 +404,30 @@ UefiMain( EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable )
         DBG_ERROR( L"Error", L"Switch page doesnt exit\n" );
     }
 
-    Print( L"SwitchPage->%p, Switchaddr->%p", SwitchPage, &__switchcr3 );
-
-    Print( L"HostCode -> %p, Codeaddr -> %p, Codepage -> %p\n", HostCode, &__HostCode, CodePage );
-
-
+    Print( L"SwitchPage->%p, Switchaddr->%p\n", SwitchPage, &__switchcr3 );
+    
     BlDbgBreak( );
 
+    Print(L"HostCode -> %p, Codeaddr -> %p, Codepage -> %p\n", HostCode, &__HostCode, CodePage);
+
     getc();
-    __switchcr3( Pml4Physical & ~0xFFF, KERNEL_VA_STACK_TOP, KERNEL_VA_BASE + ( ( ULONG64 )&__HostCode - HostCode ) );
+
+    MapKernel(  KernelImage.Base, KernelImage.VirtualBase );
+
+    getc();
+
+    __writersp(KERNEL_VA_STACK_TOP);
+
+    getc();
+
+    typedef VOID(*KernelCall)(EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL*, PBOOT_INFO);
+    KernelCall KEntry = (KernelCall)(KernelImage.VirtualBase + (KernelImage.EntryPoint - KernelImage.Base));
+
+    getc();
+    /*__switchcr3( Pml4Physical & ~0xFFF, KERNEL_VA_STACK_TOP, KERNEL_VA_BASE + ( KernelImage.EntryPoint ) );*/
     getc( );
+
+
 
     return EFI_SUCCESS;
 }

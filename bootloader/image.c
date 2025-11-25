@@ -258,79 +258,81 @@ BlLdrImageRelocation(
     _In_	ULONG64 RuntimeVA
 )
 {
-    if( !Image || !FileImage )
+    if (!Image || !FileImage)
     {
         return EFI_INVALID_PARAMETER;
     }
 
-    if( PeIsValidImage( Image ) == FALSE )
+    if (PeIsValidImage(Image) == FALSE)
     {
         return BL_STATUS_INVALID_PE_IMAGE;
     }
 
-    EFI_IMAGE_DOS_HEADER* ImageDosHeader = ( EFI_IMAGE_DOS_HEADER* )Image;
-    EFI_IMAGE_NT_HEADERS* ImageNtHeaders = ( EFI_IMAGE_NT_HEADERS* )( Image + ImageDosHeader->e_lfanew );
+    // kernel mapped identity -> 
 
-    if( ( ( UINT64 )Image != ImageNtHeaders->OptionalHeader.ImageBase ) && ( ImageNtHeaders->OptionalHeader.NumberOfRvaAndSizes > EFI_IMAGE_DIRECTORY_ENTRY_BASERELOC ) )
+    EFI_IMAGE_DOS_HEADER* ImageDosHeader = (EFI_IMAGE_DOS_HEADER*)Image;
+    EFI_IMAGE_NT_HEADERS* ImageNtHeaders = (EFI_IMAGE_NT_HEADERS*)(Image + ImageDosHeader->e_lfanew);
+
+    if (((UINT64)Image != ImageNtHeaders->OptionalHeader.ImageBase) && (ImageNtHeaders->OptionalHeader.NumberOfRvaAndSizes > EFI_IMAGE_DIRECTORY_ENTRY_BASERELOC))
     {
 
-        EFI_IMAGE_BASE_RELOCATION* ImageBaseRelocation = ( EFI_IMAGE_BASE_RELOCATION* )( Image + ( ULONG64 )ImageNtHeaders->OptionalHeader.DataDirectory[ EFI_IMAGE_DIRECTORY_ENTRY_BASERELOC ].VirtualAddress );
-        EFI_IMAGE_BASE_RELOCATION* ImageBaseRelocationEnd = ( EFI_IMAGE_BASE_RELOCATION* )( Image + ( ULONG64 )ImageNtHeaders->OptionalHeader.DataDirectory[ EFI_IMAGE_DIRECTORY_ENTRY_BASERELOC ].Size + ( ULONG64 )ImageNtHeaders->OptionalHeader.DataDirectory[ EFI_IMAGE_DIRECTORY_ENTRY_BASERELOC ].VirtualAddress );
+        EFI_IMAGE_BASE_RELOCATION* ImageBaseRelocation = (EFI_IMAGE_BASE_RELOCATION*)(Image + (ULONG64)ImageNtHeaders->OptionalHeader.DataDirectory[EFI_IMAGE_DIRECTORY_ENTRY_BASERELOC].VirtualAddress);
+        EFI_IMAGE_BASE_RELOCATION* ImageBaseRelocationEnd = (EFI_IMAGE_BASE_RELOCATION*)(Image + (ULONG64)ImageNtHeaders->OptionalHeader.DataDirectory[EFI_IMAGE_DIRECTORY_ENTRY_BASERELOC].Size + (ULONG64)ImageNtHeaders->OptionalHeader.DataDirectory[EFI_IMAGE_DIRECTORY_ENTRY_BASERELOC].VirtualAddress);
 
         ULONG64 RelativeOffset;
 
-        if( ( UINT64 )Image > ImageNtHeaders->OptionalHeader.ImageBase )
+        if ((UINT64)Image > ImageNtHeaders->OptionalHeader.ImageBase)
         {
-            RelativeOffset = ( UINT64 )Image - ImageNtHeaders->OptionalHeader.ImageBase;
+            RelativeOffset = (UINT64)Image - ImageNtHeaders->OptionalHeader.ImageBase;
         }
         else
         {
-            RelativeOffset = ImageNtHeaders->OptionalHeader.ImageBase - ( UINT64 )Image;
+            RelativeOffset = ImageNtHeaders->OptionalHeader.ImageBase - (UINT64)Image;
         }
 
         ULONG64 NumberOfRelocations;
 
-        for( ; ( ImageBaseRelocation->SizeOfBlock ) && ( ImageBaseRelocation < ImageBaseRelocationEnd ); )
+        for (; (ImageBaseRelocation->SizeOfBlock) && (ImageBaseRelocation < ImageBaseRelocationEnd); )
         {
-            EFI_PHYSICAL_ADDRESS Page = ( UINT64 )Image + ( ULONG64 )ImageBaseRelocation->VirtualAddress;
-            UINT16* DataToFix = ( UINT16* )( ( UINT8* )ImageBaseRelocation + EFI_IMAGE_SIZEOF_BASE_RELOCATION );
-            NumberOfRelocations = ( ImageBaseRelocation->SizeOfBlock - EFI_IMAGE_SIZEOF_BASE_RELOCATION ) / sizeof( UINT16 );
+            EFI_PHYSICAL_ADDRESS Page = (UINT64)Image + (ULONG64)ImageBaseRelocation->VirtualAddress;
+            UINT16* DataToFix = (UINT16*)((UINT8*)ImageBaseRelocation + EFI_IMAGE_SIZEOF_BASE_RELOCATION);
+            NumberOfRelocations = (ImageBaseRelocation->SizeOfBlock - EFI_IMAGE_SIZEOF_BASE_RELOCATION) / sizeof(UINT16);
 
-            for( UINT64 i = 0; i < NumberOfRelocations; i++ )
+            for (UINT64 i = 0; i < NumberOfRelocations; i++)
             {
-                UINT16 DataType = DataToFix[ i ] >> 12;
-                switch( DataType )
+                UINT16 DataType = DataToFix[i] >> 12;
+                switch (DataType)
                 {
-                    case EFI_IMAGE_REL_BASED_ABSOLUTE:
-                    {
-                        break;
-                    }
+                case EFI_IMAGE_REL_BASED_ABSOLUTE:
+                {
+                    break;
+                }
 
-                    case EFI_IMAGE_REL_BASED_DIR64:
+                case EFI_IMAGE_REL_BASED_DIR64:
+                {
+                    if ((UINT64)Image > ImageNtHeaders->OptionalHeader.ImageBase)
                     {
-                        if( ( UINT64 )Image > ImageNtHeaders->OptionalHeader.ImageBase )
-                        {
-                            *( ( UINT64* )( ( UINT8* )Page + ( DataToFix[ i ] & EFI_PAGE_MASK ) ) ) += RelativeOffset;
-                        }
-                        else
-                        {
-                            *( ( UINT64* )( ( UINT8* )Page + ( DataToFix[ i ] & EFI_PAGE_MASK ) ) ) -= RelativeOffset;
-                        }
-                        break;
+                        *((UINT64*)((UINT8*)Page + (DataToFix[i] & EFI_PAGE_MASK))) += RelativeOffset;
                     }
+                    else
+                    {
+                        *((UINT64*)((UINT8*)Page + (DataToFix[i] & EFI_PAGE_MASK))) -= RelativeOffset;
+                    }
+                    break;
+                }
 
-                    default:
-                    {
-                        return BL_STATUS_GENERIC_ERROR;
-                        break;
-                    }
+                default:
+                {
+                    return BL_STATUS_GENERIC_ERROR;
+                    break;
+                }
                 }
 
             }
             //
             // Get the next relocation chunk
             //
-            ImageBaseRelocation = ( EFI_IMAGE_BASE_RELOCATION* )( ( UINT8* )ImageBaseRelocation + ImageBaseRelocation->SizeOfBlock );
+            ImageBaseRelocation = (EFI_IMAGE_BASE_RELOCATION*)((UINT8*)ImageBaseRelocation + ImageBaseRelocation->SizeOfBlock);
         }
     }
 

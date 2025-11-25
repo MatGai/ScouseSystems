@@ -32,6 +32,10 @@ extern "C"
         ULONG64 Value
     );
 
+    void __writersp(
+        unsigned long long
+    );
+
 
 #ifdef __cplusplus
 }

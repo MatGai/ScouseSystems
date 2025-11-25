@@ -66,6 +66,7 @@ ULONG64 SsPfnFreeHead;
 #define KERNEL_VA_STACK_TOP ( KERNEL_VA_BASE - 0x1000 - 0x10 )
 #define KERNEL_VA_STACK ( KERNEL_VA_BASE - 0x2000 )
 
+#define ALIGN_NEXT_PAGE( Value )  ( ( (ULONG64)Value + DEFAULT_PAGE_SIZE - 1 ) & ~0xFFFull )
 #define ALIGN_PAGE( Value )  ( (ULONG64)Value & ~0xFFFull )
 #define PAGE_OFFSET( Value ) ( (ULONG64)Value & 0xFFFull  )
 
@@ -392,11 +393,55 @@ UnmapPage(
 EFI_STATUS
 BLAPI
 MapKernel(
-    ULONG64 KernelPhysical,
-    ULONG64 NewKernelBase
+    ULONG64 VirtualImageBase,
+    ULONG64 NewVirtualImageBase
 )
 {
+    PEFI_IMAGE_NT_HEADERS NtHeaders = EFI_IMAGE_NTHEADERS( VirtualImageBase );
 
+    ULONG64 SizeOfHeaders = NtHeaders->OptionalHeader.SizeOfHeaders;
+    for( ULONG64 Offset = 0; Offset < SizeOfHeaders; Offset += DEFAULT_PAGE_SIZE )
+    {
+        EFI_STATUS St = MapPage( NewVirtualImageBase + Offset, VirtualImageBase + Offset, PAGE_FLAG_PRESENT | PAGE_FLAG_RW );
+        if( EFI_ERROR( St ) )
+        {
+            DBG_ERROR(St, L"Failed to re-map kernel headers\n");
+            return St;
+        }
+    }
+
+    EFI_IMAGE_SECTION_HEADER* CurrentSection = EFI_IMAGE_FIRST_SECTION( NtHeaders );
+    for( UINT32 Index = 0; Index < NtHeaders->FileHeader.NumberOfSections; ++Index )
+    {
+        ULONG64 SectionNewVirtualAddress = NewVirtualImageBase + CurrentSection[ Index ].VirtualAddress;
+        ULONG64 SectionPhysicalAddress = VirtualImageBase + CurrentSection[ Index ].VirtualAddress;
+
+        if (CurrentSection[Index].Misc.VirtualSize > CurrentSection[Index].SizeOfRawData)
+        {
+            ZeroMem(   
+                (PVOID)(CurrentSection[Index].Misc.VirtualSize + CurrentSection[Index].SizeOfRawData),
+                CurrentSection[Index].Misc.VirtualSize - CurrentSection[Index].SizeOfRawData
+            );
+        }
+
+        ULONG64 PageFlags = PAGE_FLAG_PRESENT;
+
+        // only care about 
+        if( !( CurrentSection[ Index ].Characteristics & EFI_IMAGE_SCN_MEM_WRITE ) )
+        {
+            PageFlags |= PAGE_FLAG_RW;
+        }
+
+        for (ULONG64 Offset = 0; Offset < ALIGN_NEXT_PAGE(CurrentSection[Index].Misc.VirtualSize); Offset += DEFAULT_PAGE_SIZE)
+        {
+            EFI_STATUS St = MapPage( SectionNewVirtualAddress + Offset, SectionPhysicalAddress + Offset, PageFlags );
+            if (EFI_ERROR(St))
+            {
+                DBG_ERROR(St, L"Failed to re-map kernel section\n");
+                return St;
+            }
+        }
+    }
     return EFI_SUCCESS;
 }
 
