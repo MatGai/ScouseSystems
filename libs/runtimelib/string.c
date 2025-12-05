@@ -1,4 +1,4 @@
-#include <ss/runtime/string.h>
+#include <scouse/runtime/string.h>
 
 void*
 memcpy(
@@ -187,5 +187,23 @@ strstr(
     const char* s1
 )
 {
-
+	for (;; )
+    {
+        const char* p = s0;
+        const char* q = s1;
+        while( *q != '\0' && *p == *q )
+        {
+            ++p;
+            ++q;
+        }
+        if( *q == '\0' )
+        {
+            return (char*)s0;
+        }
+        if( *s0 == '\0' )
+        {
+            return (char*)NULL;
+        }
+        ++s0;
+    }
 }

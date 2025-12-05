@@ -22,7 +22,7 @@
     <ClCompile Include="string.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\ss\runtime\string.h" />
+    <ClInclude Include="include\scouse\runtime\string.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
