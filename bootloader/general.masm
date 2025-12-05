@@ -1,0 +1,99 @@
+; general.asm    
+
+; ########################################
+; #
+; #    FUNCTON DECLARATIONS
+; #
+; #######################################
+
+
+.code
+
+PUBLIC _mfence
+PUBLIC _clflush
+;PUBLIC _cpuid
+PUBLIC _tlbflush
+PUBLIC _int3
+
+
+; ########################################
+; #
+; #    FUNCTON DEFINITIONS
+; #
+; #######################################
+
+
+;
+; Function: void _mfence ( void )
+;
+; Description: This function is used to ensure that all memory operations 
+;              are completed before any subsequent memory operations are
+;              executed. It is a memory barrier that prevents reordering
+;              of memory operations. This is important for ensuring data 
+;              consistency and correctness in multi-threaded environments.
+;
+; Parameters:  None
+;
+; Returns:     None
+;
+_mfence PROC
+
+    mfence
+    ret
+
+_mfence ENDP
+
+
+;
+; Function: void _clflush ( void* rcx )
+;
+; Description: This function is used to flush a cache line from all levels
+;              of the cache hierarchy. It ensures that the data in the
+;              specified memory address is written back to main memory
+;              and invalidated in the cache. This is important for
+;              ensuring data consistency and correctness in multi-threaded
+;              environments.
+;
+; Parameters:  rcx - Address of the cache line to be flushed.
+;
+; Returns:     None
+;
+_clflush PROC
+
+    clflush [rcx]
+    ret
+
+_clflush ENDP
+
+;
+; Function: void _tlbflush ( void* rcx )
+;
+; Description: This function is used to flush the Translation Lookaside Buffer
+; 			   (TLB) entry for the specified virtual address. It ensures that
+;              the TLB entry is invalidated and the next access to the
+;              virtual address will result in a page table walk to retrieve
+;              the updated page table entry. This is important for ensuring
+;              data consistency and correctness in multi-threaded environments. 
+;              Flushing a specific virtual address is much more efficient than 
+;              flushing the entire TLB, which can be expensive in terms of performance.
+;
+; Parameters:  rcx - Pointer of the Virtual Address to flush in the TLB.
+;
+; Returns:     None
+;
+_tlbflush PROC
+
+    mov rax, rcx
+    invlpg [rax]
+    ret
+
+_tlbflush ENDP
+
+_int3 PROC
+    int 3
+    ret
+_int3 ENDP
+
+
+
+END

@@ -1,0 +1,68 @@
+
+.code
+
+PUBLIC __switchcr3
+PUBLIC __hostcode
+PUBLIC __readtsc
+PUBLIC __readtscserial
+
+; rcx rdx r8  r9
+
+__switchcr3 PROC
+	
+	cli
+	mov cr3, rcx
+	mov rsp, rdx
+	
+	push r8
+	ret
+
+__switchcr3 ENDP
+
+
+__hostcode PROC
+
+	mov rax, 0BEEFh
+	push rax
+	xor rax, rax
+	pop rax
+	cmp rax, 0BEEFh
+	jz notright
+	mov rax, 1
+	jmp carryon
+
+notright:
+	mov rax, 0
+
+carryon:
+	xor rax, rax
+
+__hostcode ENDP
+
+__readtsc PROC
+    rdtsc          
+    shl rdx, 32
+    or  rax, rdx
+    ret
+__readtsc ENDP
+
+__readtscserial PROC
+    push rbx
+
+    mov eax, 0
+    cpuid              
+    rdtsc
+    shl rdx, 32
+    or  rax, rdx
+    mov r8, rax
+
+    mov eax, 0
+    cpuid              
+
+    mov rax, r8
+    pop rbx
+    ret
+__readtscserial ENDP
+
+
+END

@@ -1,0 +1,110 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="boot">
+      <UniqueIdentifier>{c56f21a2-9694-4559-bff6-a28640fccb16}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source">
+      <UniqueIdentifier>{c934c8e5-8416-4642-858f-b52b1f41c218}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="util">
+      <UniqueIdentifier>{a551596d-17de-4098-9c9a-ff61b10e9fb9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="headers">
+      <UniqueIdentifier>{72b1ae7e-5da5-468c-81fc-bd63ce88ff0b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="paging">
+      <UniqueIdentifier>{4b9ccd3b-86ed-4e43-8a7f-f9a40431123b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="loader">
+      <UniqueIdentifier>{8f1e7ba5-d88a-4cec-ac51-a82100048f63}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="registers">
+      <UniqueIdentifier>{903ff0f3-e63c-4396-8005-61f5f00fb633}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="registers\control">
+      <UniqueIdentifier>{5eca258b-aa28-491f-a53d-84cd1aaa955f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="registers\general">
+      <UniqueIdentifier>{8bbc7a1f-ddd0-4022-9c22-3baf58c4e19f}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="UefiMain.c">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="boot.c">
+      <Filter>boot</Filter>
+    </ClCompile>
+    <ClCompile Include="filesystem.c">
+      <Filter>boot</Filter>
+    </ClCompile>
+    <ClCompile Include="util.c">
+      <Filter>util</Filter>
+    </ClCompile>
+    <ClCompile Include="pe.c">
+      <Filter>loader</Filter>
+    </ClCompile>
+    <ClCompile Include="image.c">
+      <Filter>loader</Filter>
+    </ClCompile>
+    <ClCompile Include="registers.h">
+      <Filter>registers</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="boot.h">
+      <Filter>boot</Filter>
+    </ClInclude>
+    <ClInclude Include="filesystem.h">
+      <Filter>boot</Filter>
+    </ClInclude>
+    <ClInclude Include="util.h">
+      <Filter>util</Filter>
+    </ClInclude>
+    <ClInclude Include="pe.h">
+      <Filter>loader</Filter>
+    </ClInclude>
+    <ClInclude Include="image.h">
+      <Filter>loader</Filter>
+    </ClInclude>
+    <ClInclude Include="stdint.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="status.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="efi.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="bdefs.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="pagemanager.h">
+      <Filter>paging</Filter>
+    </ClInclude>
+    <ClInclude Include="control.h">
+      <Filter>registers\control</Filter>
+    </ClInclude>
+    <ClInclude Include="general.h">
+      <Filter>registers\general</Filter>
+    </ClInclude>
+    <ClInclude Include="special.h">
+      <Filter>registers</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="control.masm">
+      <Filter>registers\control</Filter>
+    </MASM>
+    <MASM Include="general.masm">
+      <Filter>registers\general</Filter>
+    </MASM>
+    <MASM Include="special.masm">
+      <Filter>registers</Filter>
+    </MASM>
+    <MASM Include="pagemanager.masm">
+      <Filter>paging</Filter>
+    </MASM>
+  </ItemGroup>
+</Project>

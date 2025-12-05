@@ -1,0 +1,52 @@
+
+PUBLIC __readcr0
+PUBLIC __writecr0
+
+PUBLIC __readcr3
+PUBLIC __writecr3
+
+PUBLIC __readcr4
+PUBLIC __writecr4
+
+PUBLIC __writersp
+
+.code
+
+__readcr0 PROC
+    mov rax, cr0
+    ret
+__readcr0 ENDP
+
+__writecr0 PROC
+    mov rax, rcx
+    mov cr0, rax
+    ret
+__writecr0 ENDP
+
+__readcr3 PROC
+    mov rax, cr3
+    ret
+__readcr3 ENDP
+
+__writecr3 PROC
+    mov rax, rcx
+    mov cr3, rax
+    ret
+__writecr3 ENDP
+
+__readcr4 PROC
+    mov rax, cr4
+    ret
+__readcr4 ENDP
+
+__writecr4 PROC
+    mov rax, rcx
+    mov cr4, rax
+    ret
+__writecr4 ENDP
+
+__writersp PROC
+    mov rsp, rcx
+    ret
+__writersp ENDP
+END

@@ -1,0 +1,59 @@
+; general.asm    
+
+; ########################################
+; #
+; #    FUNCTON DECLARATIONS
+; #
+; #######################################
+
+
+.code
+
+PUBLIC __readeflags
+PUBLIC __writeeflags
+PUBLIC __cpuidsupport
+
+
+; ########################################
+; #
+; #    FUNCTON DEFINITIONS
+; #
+; #######################################
+
+
+
+__readeflags PROC
+    pushfq  ; CPU puts RFLAGS onto the stack
+    pop     rax ; Pop RFLAGS from stack into RAX
+    ret
+__readeflags ENDP
+
+__writeeflags PROC
+    push    rax ; Save RAX to stack
+    popfq ; Push RAX value into RFLAGS
+    ret
+__writeeflags ENDP
+
+__cpuidsupport PROC    
+   pushfq       
+   pop     rax     
+   mov     rbx, rax    ; store RFLAGS into RBX
+
+   xor     rax, 1 SHL 21   ; toggle ID flag 
+   push    rax      
+   popfq                   ; set RFLAGS with new ID flag
+   
+   pushfq         
+   pop     rax             ; get new RFLAGS in RAX
+   xor     rax, rbx        
+   and     rax, 1 SHL 21   ; check for any change in ID flag
+   push    rbx
+   popfq                   ; restore RFLAGS left from RBX
+
+   shr rax, 21             ; move ID flag to bit 0
+   and rax, 1              ; mask all other bits
+   ret
+__cpuidsupport ENDP
+
+
+END
