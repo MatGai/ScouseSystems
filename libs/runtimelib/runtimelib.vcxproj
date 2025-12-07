@@ -19,9 +19,11 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="print.c" />
     <ClCompile Include="string.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\scouse\runtime\print.h" />
     <ClInclude Include="include\scouse\runtime\string.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -30,6 +32,7 @@
     <ProjectGuid>{1a7af4a7-7335-4262-af64-817ced151c18}</ProjectGuid>
     <RootNamespace>runtimelib</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>runtime</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

@@ -44,6 +44,8 @@ typedef struct _BOOT_INFO {
 __declspec(align(TLBTEST_PAGE_SIZE))
 static unsigned char g_TlbJumpPages[TLBTEST_NUM_PAGES * TLBTEST_PAGE_SIZE];
 
+uint16_t HelloBuffer[] = L"Hello from kernel buffer!\n";
+
 typedef void (*TLBTEST_STUB)(void);
 
 static __forceinline TLBTEST_STUB
@@ -67,9 +69,9 @@ int KernelMain(
     PBOOT_INFO BootInfo
 )
 {
-    ConOut->Print(ConOut, L"Hello from kernel\r\n");
+    ConOut->Print(ConOut, HelloBuffer);
 
-    RunTlbJumpTest(ConOut);
+    //RunTlbJumpTest(ConOut);
 
     return 1;
 }
@@ -93,8 +95,9 @@ TlbTestGetStubInPage(
     unsigned int pageIndex
 )
 {
-    unsigned char* base = g_TlbJumpPages + ((unsigned __int64)pageIndex * TLBTEST_PAGE_SIZE);
-    return (TLBTEST_STUB)base;
+    //unsigned char* base = g_TlbJumpPages + ((unsigned __int64)pageIndex * TLBTEST_PAGE_SIZE);
+    //return (TLBTEST_STUB)base;
+    return 0;
 }
 
 static void

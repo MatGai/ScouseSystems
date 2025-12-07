@@ -2,8 +2,10 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="string.c" />
+    <ClCompile Include="print.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\scouse\runtime\string.h" />
+    <ClInclude Include="include\scouse\runtime\print.h" />
   </ItemGroup>
 </Project>

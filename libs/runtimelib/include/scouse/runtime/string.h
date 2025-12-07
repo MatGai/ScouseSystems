@@ -1,5 +1,5 @@
-#ifndef SS_STRING_H
-#define SS_STRING_H
+#ifndef RT_STRING_H
+#define RT_STRING_H
 
 #include <stddef.h>
 
@@ -72,4 +72,4 @@ strstr(
 }
 #endif
 
-#endif // !SS_STRING_H
+#endif // !RT_STRING_H
