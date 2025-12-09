@@ -418,18 +418,10 @@ MapKernel(
         ULONG64 SectionNewVirtualAddress = NewVirtualImageBase + CurrentSection[ Index ].VirtualAddress;
         ULONG64 SectionPhysicalAddress = VirtualImageBase + CurrentSection[ Index ].VirtualAddress;
 
-        if (CurrentSection[Index].Misc.VirtualSize > CurrentSection[Index].SizeOfRawData)
-        {
-            ZeroMem(   
-                (PVOID)(CurrentSection[Index].Misc.VirtualSize + CurrentSection[Index].SizeOfRawData),
-                CurrentSection[Index].Misc.VirtualSize - CurrentSection[Index].SizeOfRawData
-            );
-        }
-
         ULONG64 PageFlags = PAGE_FLAG_PRESENT;
 
         // only care about 
-        if( !( CurrentSection[ Index ].Characteristics & EFI_IMAGE_SCN_MEM_WRITE ) )
+        if( ( CurrentSection[ Index ].Characteristics & EFI_IMAGE_SCN_MEM_WRITE ) )
         {
             PageFlags |= PAGE_FLAG_RW;
         }

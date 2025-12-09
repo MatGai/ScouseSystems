@@ -36,15 +36,14 @@ typedef struct _BOOT_INFO {
 
 #include <stdint.h>
 
-#define TLBTEST_PAGE_SIZE      4096
-#define TLBTEST_NUM_PAGES      1024
-#define TLBTEST_ITERATIONS     1000000ULL
+#define TLBTEST_PAGE_SIZE      0x1000
+#define TLBTEST_NUM_PAGES      8888
+#define TLBTEST_ITERATIONS     0xFFFFFF
+
 
 // Page aligned buffer that we fill with jmps/ret.
 __declspec(align(TLBTEST_PAGE_SIZE))
 static unsigned char g_TlbJumpPages[TLBTEST_NUM_PAGES * TLBTEST_PAGE_SIZE];
-
-uint16_t HelloBuffer[] = L"Hello from kernel buffer!\n";
 
 typedef void (*TLBTEST_STUB)(void);
 
@@ -69,9 +68,8 @@ int KernelMain(
     PBOOT_INFO BootInfo
 )
 {
-    ConOut->Print(ConOut, HelloBuffer);
-
-    //RunTlbJumpTest(ConOut);
+    ConOut->Print(ConOut, L"Hello from kernel buffer!\r\n");
+    RunTlbJumpTest(ConOut);
 
     return 1;
 }
@@ -80,24 +78,31 @@ int KernelMain(
 
 #pragma intrinsic(__rdtsc)
 
-unsigned __int64 __readtscserial(
+void
+__flushtlb(
     void
 )
 {
-    _mm_lfence();
+    unsigned __int64 cr3 = __readcr3();
+    __writecr3(cr3);
+}
+
+unsigned __int64 
+__readtscserial(
+    void
+)
+{
     unsigned __int64 t = __rdtsc();
-    _mm_lfence();
     return t;
 }
 
 static __forceinline TLBTEST_STUB
 TlbTestGetStubInPage(
-    unsigned int pageIndex
+    unsigned int PageIndex
 )
 {
-    //unsigned char* base = g_TlbJumpPages + ((unsigned __int64)pageIndex * TLBTEST_PAGE_SIZE);
-    //return (TLBTEST_STUB)base;
-    return 0;
+    unsigned char* base = g_TlbJumpPages + ((unsigned __int64)PageIndex * TLBTEST_PAGE_SIZE);
+    return (TLBTEST_STUB)base;
 }
 
 static void
@@ -109,7 +114,7 @@ ConOutPrintDecimal(
     unsigned short buf[32];  // enough for 20 digits + null
     int pos = 31;
 
-    buf[pos] = 0; // null-terminate
+    buf[pos] = L'\0'; // null-terminate
 
     if (value == 0)
     {
@@ -130,32 +135,32 @@ ConOutPrintDecimal(
 }
 
 static void
-RunTlbJumpTest(EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL* ConOut)
+RunTlbJumpTest(
+    EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL* ConOut
+)
 {
-    unsigned int i;
-    unsigned __int64 start, end;
-    unsigned __int64 deltaSame, deltaCross;
+    unsigned int Index;
+    unsigned __int64 Start, End;
+    unsigned __int64 DeltaSamePage, DeltaCrossPage;
 
     ConOut->Print(ConOut, L"\r\n[TLB] Setting up jump pages...\r\n");
 
     //
     // Fill each page with a single instruction: ret
     //
-    for (i = 0; i < TLBTEST_NUM_PAGES; ++i)
+    for (Index = 0; Index < TLBTEST_NUM_PAGES; ++Index)
     {
-        unsigned char* p = (unsigned char*)TlbTestGetStubInPage(i);
+        unsigned char* p = (unsigned char*)TlbTestGetStubInPage(Index);
         p[0] = 0xC3; // ret
     }
-
-    ConOut->Print(ConOut, L"Hello2\r\n");
 
     //
     // prefetch pages for tlb
     //
-    for (i = 0; i < TLBTEST_NUM_PAGES; ++i)
+    for (Index = 0; Index < TLBTEST_NUM_PAGES; ++Index)
     {
-        TLBTEST_STUB stub = TlbTestGetStubInPage(i);
-        stub();
+        TLBTEST_STUB Stub = TlbTestGetStubInPage(Index);
+        Stub();
     }
 
     //
@@ -163,23 +168,54 @@ RunTlbJumpTest(EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL* ConOut)
     //
     ConOut->Print(ConOut, L"[TLB] Same-page jump test...\r\n");
 
-    TLBTEST_STUB samePageStub = TlbTestGetStubInPage(0);
+    __flushtlb();
 
-    start = __readtscserial();
-    for (unsigned __int64 iter = 0; iter < TLBTEST_ITERATIONS; ++iter)
+    Start = __rdtsc();
+    for ( Index = 0 ; Index < TLBTEST_ITERATIONS; ++Index )
     {
-        samePageStub();
-    }
-    end = __readtscserial();
+        TLBTEST_STUB SamePageStub = TlbTestGetStubInPage(0);
+        SamePageStub();
 
-    deltaSame = end - start;
+        if (Index % TLBTEST_NUM_PAGES)
+        {
+            DeltaSamePage = (End - Start) % TLBTEST_NUM_PAGES;
+        }
+    }
+    End = __rdtsc();
+
+    DeltaSamePage = End - Start;
 
     ConOut->Print(ConOut, L"[TLB] Same page total cycles: ");
-    ConOutPrintDecimal(ConOut, deltaSame);
+    ConOutPrintDecimal(ConOut, DeltaSamePage);
     ConOut->Print(ConOut, L"\r\n");
 
     ConOut->Print(ConOut, L"[TLB] Same page cycles per call: ");
-    ConOutPrintDecimal(ConOut, deltaSame / TLBTEST_ITERATIONS);
+    ConOutPrintDecimal(ConOut, DeltaSamePage / TLBTEST_ITERATIONS);
+    ConOut->Print(ConOut, L"\r\n");
+
+    __flushtlb();
+
+    Start = __rdtsc();
+    for (Index = 0; Index < TLBTEST_ITERATIONS; ++Index)
+    {
+        TLBTEST_STUB SamePageStub = TlbTestGetStubInPage(0);
+        SamePageStub();
+
+		if (Index % TLBTEST_NUM_PAGES)
+        {
+			DeltaSamePage = (End - Start) % TLBTEST_NUM_PAGES;
+        }
+    }
+    End = __rdtsc();
+
+    DeltaSamePage = End - Start;
+
+    ConOut->Print(ConOut, L"[TLB] Same page total cycles: ");
+    ConOutPrintDecimal(ConOut, DeltaSamePage);
+    ConOut->Print(ConOut, L"\r\n");
+
+    ConOut->Print(ConOut, L"[TLB] Same page cycles per call: ");
+    ConOutPrintDecimal(ConOut, DeltaSamePage / TLBTEST_ITERATIONS);
     ConOut->Print(ConOut, L"\r\n");
 
     //
@@ -187,26 +223,54 @@ RunTlbJumpTest(EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL* ConOut)
     //
     ConOut->Print(ConOut, L"[TLB] Cross-page jump test...\r\n");
 
-    start = __readtscserial();
-    unsigned int pageIndex = 0;
+    __flushtlb();
 
-    for (unsigned __int64 iter = 0; iter < TLBTEST_ITERATIONS; ++iter)
+    Start = __rdtsc();
+    unsigned int PageIndex = 0;
+
+    for (Index = 0; Index < TLBTEST_ITERATIONS; ++Index)
     {
-        TLBTEST_STUB stub = TlbTestGetStubInPage(pageIndex);
-        stub();
-        pageIndex = (pageIndex + 1) & (TLBTEST_NUM_PAGES - 1);
+        TLBTEST_STUB Stub = TlbTestGetStubInPage(PageIndex);
+        Stub();
+
+		PageIndex = (PageIndex + 1) % TLBTEST_NUM_PAGES;
     }
 
-    end = __readtscserial();
+    End = __rdtsc();
 
-    deltaCross = end - start;
+    DeltaCrossPage = End - Start;
 
     ConOut->Print(ConOut, L"[TLB] Cross-page total cycles: ");
-    ConOutPrintDecimal(ConOut, deltaCross);
+    ConOutPrintDecimal(ConOut, DeltaCrossPage);
     ConOut->Print(ConOut, L"\r\n");
 
     ConOut->Print(ConOut, L"[TLB] Cross-page cycles per call: ");
-    ConOutPrintDecimal(ConOut, deltaCross / TLBTEST_ITERATIONS);
+    ConOutPrintDecimal(ConOut, DeltaCrossPage / TLBTEST_ITERATIONS);
+    ConOut->Print(ConOut, L"\r\n");
+
+    __flushtlb();
+
+    Start = __rdtsc();
+    PageIndex = 0;
+
+    for (Index = 0; Index < TLBTEST_ITERATIONS; ++Index)
+    {
+        TLBTEST_STUB Stub = TlbTestGetStubInPage(PageIndex);
+        Stub();
+
+        PageIndex = (PageIndex + 1) % TLBTEST_NUM_PAGES;
+    }
+
+    End = __rdtsc();
+
+    DeltaCrossPage = End - Start;
+
+    ConOut->Print(ConOut, L"[TLB] Cross-page total cycles: ");
+    ConOutPrintDecimal(ConOut, DeltaCrossPage);
+    ConOut->Print(ConOut, L"\r\n");
+
+    ConOut->Print(ConOut, L"[TLB] Cross-page cycles per call: ");
+    ConOutPrintDecimal(ConOut, DeltaCrossPage / TLBTEST_ITERATIONS);
     ConOut->Print(ConOut, L"\r\n");
 
     ConOut->Print(ConOut, L"[TLB] Done.\r\n\r\n");

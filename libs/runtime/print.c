@@ -1,4 +1,6 @@
 
+#include <scouse/runtime/string.h>
+
 typedef unsigned __int64 (*__WriteConsole)( unsigned short* );
 
 unsigned int 

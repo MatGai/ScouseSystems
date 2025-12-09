@@ -136,7 +136,10 @@ MappingExists(
  */
 EFI_STATUS
 EFIAPI
-UefiMain( EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable )
+UefiMain( 
+    EFI_HANDLE ImageHandle, 
+    EFI_SYSTEM_TABLE* SystemTable 
+)
 {
 
 
@@ -423,6 +426,8 @@ UefiMain( EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable )
 
     Print( L"Cycles per sec -> %llu\n", frequency );
 
+    BlDbgBreak();
+
     MapKernel(  KernelImage.Base, KernelImage.VirtualBase );
     __writecr3( Pml4Physical );
 
@@ -437,6 +442,7 @@ UefiMain( EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable )
 
 
     getc( );
+    getc();
 
 
 
