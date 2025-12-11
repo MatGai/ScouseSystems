@@ -1,3 +1,5 @@
+#include "msr.h"
+
 typedef struct _EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL;
 
 typedef unsigned __int64(__cdecl* OutputString)(
@@ -62,6 +64,9 @@ static void
 RunTlbJumpTest(
     EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL* ConOut
 );
+
+void
+RunPmcSanityTest(EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL* ConOut);
 
 int KernelMain(
     EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL* ConOut,
@@ -134,7 +139,9 @@ ConOutPrintDecimal(
     ConOut->Print(ConOut, &buf[pos]);
 }
 
-static void
+#include "msr.h"
+
+void
 RunTlbJumpTest(
     EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL* ConOut
 )
@@ -143,70 +150,40 @@ RunTlbJumpTest(
     unsigned __int64 Start, End;
     unsigned __int64 DeltaSamePage, DeltaCrossPage;
 
+    unsigned __int64 L1SameMisses = 2;
+    unsigned __int64 L2SameMisses = 2;
+    unsigned __int64 L1CrossMisses = 2;
+    unsigned __int64 L2CrossMisses = 2;
+
     ConOut->Print(ConOut, L"\r\n[TLB] Setting up jump pages...\r\n");
 
-    //
-    // Fill each page with a single instruction: ret
-    //
     for (Index = 0; Index < TLBTEST_NUM_PAGES; ++Index)
     {
         unsigned char* p = (unsigned char*)TlbTestGetStubInPage(Index);
         p[0] = 0xC3; // ret
     }
 
-    //
-    // prefetch pages for tlb
-    //
     for (Index = 0; Index < TLBTEST_NUM_PAGES; ++Index)
     {
         TLBTEST_STUB Stub = TlbTestGetStubInPage(Index);
         Stub();
     }
 
-    //
-    // repeatedly call a stub in a single page.
-    //
-    ConOut->Print(ConOut, L"[TLB] Same-page jump test...\r\n");
+    ConOut->Print(ConOut, L"[TLB] Same page jump test...\r\n");
 
-    __flushtlb();
+    /*__flushtlb();*/
 
-    Start = __rdtsc();
-    for ( Index = 0 ; Index < TLBTEST_ITERATIONS; ++Index )
-    {
-        TLBTEST_STUB SamePageStub = TlbTestGetStubInPage(0);
-        SamePageStub();
-
-        if (Index % TLBTEST_NUM_PAGES)
-        {
-            DeltaSamePage = (End - Start) % TLBTEST_NUM_PAGES;
-        }
-    }
-    End = __rdtsc();
-
-    DeltaSamePage = End - Start;
-
-    ConOut->Print(ConOut, L"[TLB] Same page total cycles: ");
-    ConOutPrintDecimal(ConOut, DeltaSamePage);
-    ConOut->Print(ConOut, L"\r\n");
-
-    ConOut->Print(ConOut, L"[TLB] Same page cycles per call: ");
-    ConOutPrintDecimal(ConOut, DeltaSamePage / TLBTEST_ITERATIONS);
-    ConOut->Print(ConOut, L"\r\n");
-
-    __flushtlb();
+    KrnlAmdItlbMissStartCounting();
 
     Start = __rdtsc();
     for (Index = 0; Index < TLBTEST_ITERATIONS; ++Index)
     {
         TLBTEST_STUB SamePageStub = TlbTestGetStubInPage(0);
         SamePageStub();
-
-		if (Index % TLBTEST_NUM_PAGES)
-        {
-			DeltaSamePage = (End - Start) % TLBTEST_NUM_PAGES;
-        }
     }
     End = __rdtsc();
+
+    KrnlAmdItlbMissStopCounting(&L1SameMisses, &L2SameMisses);
 
     DeltaSamePage = End - Start;
 
@@ -218,40 +195,22 @@ RunTlbJumpTest(
     ConOutPrintDecimal(ConOut, DeltaSamePage / TLBTEST_ITERATIONS);
     ConOut->Print(ConOut, L"\r\n");
 
-    //
-    // for each call, jump into a different page.
-    //
-    ConOut->Print(ConOut, L"[TLB] Cross-page jump test...\r\n");
+    ConOut->Print(ConOut, L"[TLB] Same page L1 ITLB misses: ");
+    ConOutPrintDecimal(ConOut, L1SameMisses);
+    ConOut->Print(ConOut, L"\r\n");
 
-    __flushtlb();
+    ConOut->Print(ConOut, L"[TLB] Same page L2 ITLB misses: ");
+    ConOutPrintDecimal(ConOut, L2SameMisses);
+    ConOut->Print(ConOut, L"\r\n");
+
+    ConOut->Print(ConOut, L"[TLB] Cross page jump test...\r\n");
+
+    /*__flushtlb();*/
+
+    KrnlAmdItlbMissStartCounting();
 
     Start = __rdtsc();
     unsigned int PageIndex = 0;
-
-    for (Index = 0; Index < TLBTEST_ITERATIONS; ++Index)
-    {
-        TLBTEST_STUB Stub = TlbTestGetStubInPage(PageIndex);
-        Stub();
-
-		PageIndex = (PageIndex + 1) % TLBTEST_NUM_PAGES;
-    }
-
-    End = __rdtsc();
-
-    DeltaCrossPage = End - Start;
-
-    ConOut->Print(ConOut, L"[TLB] Cross-page total cycles: ");
-    ConOutPrintDecimal(ConOut, DeltaCrossPage);
-    ConOut->Print(ConOut, L"\r\n");
-
-    ConOut->Print(ConOut, L"[TLB] Cross-page cycles per call: ");
-    ConOutPrintDecimal(ConOut, DeltaCrossPage / TLBTEST_ITERATIONS);
-    ConOut->Print(ConOut, L"\r\n");
-
-    __flushtlb();
-
-    Start = __rdtsc();
-    PageIndex = 0;
 
     for (Index = 0; Index < TLBTEST_ITERATIONS; ++Index)
     {
@@ -263,15 +222,56 @@ RunTlbJumpTest(
 
     End = __rdtsc();
 
+    KrnlAmdItlbMissStopCounting(&L1CrossMisses, &L2CrossMisses);
+
     DeltaCrossPage = End - Start;
 
-    ConOut->Print(ConOut, L"[TLB] Cross-page total cycles: ");
+    ConOut->Print(ConOut, L"[TLB] Cross page total cycles: ");
     ConOutPrintDecimal(ConOut, DeltaCrossPage);
     ConOut->Print(ConOut, L"\r\n");
 
-    ConOut->Print(ConOut, L"[TLB] Cross-page cycles per call: ");
+    ConOut->Print(ConOut, L"[TLB] Cross page cycles per call: ");
     ConOutPrintDecimal(ConOut, DeltaCrossPage / TLBTEST_ITERATIONS);
     ConOut->Print(ConOut, L"\r\n");
 
+    ConOut->Print(ConOut, L"[TLB] Cross page L1 ITLB misses: ");
+    ConOutPrintDecimal(ConOut, L1CrossMisses);
+    ConOut->Print(ConOut, L"\r\n");
+
+    ConOut->Print(ConOut, L"[TLB] Cross page L2 ITLB misses: ");
+    ConOutPrintDecimal(ConOut, L2CrossMisses);
+    ConOut->Print(ConOut, L"\r\n");
+
     ConOut->Print(ConOut, L"[TLB] Done.\r\n\r\n");
+}
+
+void
+RunPmcSanityTest(EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL* ConOut)
+{
+    unsigned __int64 Cycles, Instructions;
+    volatile unsigned int i;
+
+    ConOut->Print(ConOut, L"\r\n[PMC] Sanity test...\r\n");
+
+    KrnlMsrAmdPmcConfigure(0, 0x76u, 0x00u, AMD_PMC_OSUSER_ALL);
+    KrnlMsrAmdPmcConfigure(1, 0xC0u, 0x00u, AMD_PMC_OSUSER_ALL);
+
+    for (i = 0; i < 1000000u; ++i)
+    {
+        __nop(); 
+    }
+
+    Cycles = KrnlMsrAmdPmcRead(0);
+    Instructions = KrnlMsrAmdPmcRead(1);
+
+    KrnlMsrAmdPmcDisable(0);
+    KrnlMsrAmdPmcDisable(1);
+
+    ConOut->Print(ConOut, L"[PMC] Cycles not in halt: ");
+    ConOutPrintDecimal(ConOut, Cycles);
+    ConOut->Print(ConOut, L"\r\n");
+
+    ConOut->Print(ConOut, L"[PMC] Retired instructions: ");
+    ConOutPrintDecimal(ConOut, Instructions);
+    ConOut->Print(ConOut, L"\r\n\r\n");
 }

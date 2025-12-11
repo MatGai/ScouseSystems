@@ -14,4 +14,7 @@
   <ItemGroup>
     <MASM Include="entry.masm" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="msr.h" />
+  </ItemGroup>
 </Project>

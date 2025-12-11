@@ -25,7 +25,7 @@
 	readmsr
 
 	mov r8, cr2
-	cmp r8, MAGIC_LODWORD
+	cmp r8d, MAGIC_LODWORD
 	jne readmsr_success
 
 	xor r8, r8
@@ -40,7 +40,7 @@ readmsr_success:
 	test edx, edx
 	jz readmsr_ret
 
-	mov dword [rdx], r10d
+	mov dword [edx], r10d
 
 readmsr_ret:
 
